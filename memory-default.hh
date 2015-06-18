@@ -13,6 +13,8 @@
 #include "packet.hh"
 #include "dna.pb.h"
 
+#include "configs.hh"
+
 // Keeps track of the state variable for a particular sender.
 class Memory {
 public:
@@ -40,9 +42,10 @@ public:
     : _rec_send_ewma( s_data.at( 0 ) ),
       _rec_rec_ewma( s_data.at( 1 ) ),
       _rtt_ratio( s_data.at( 2 ) ),
-      //_slow_rec_rec_ewma( s_data.at( 3 ) ),
-      _slow_rec_rec_ewma( 0 ), //just a stopgap initial value
-      _loss_rate( s_data.at( 3 ) ),
+      _slow_rec_rec_ewma( s_data.at( 3 ) ),
+      //_slow_rec_rec_ewma( 0 ), //just a stopgap initial value
+      //_loss_rate( s_data.at( 3 ) ),
+      _loss_rate( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
       _min_rtt( 0 ),
@@ -77,23 +80,23 @@ public:
 
   static const unsigned int datasize = 4;
 
-  const DataType & field( unsigned int num ) const { return num == 0 ? _rec_send_ewma : num == 1 ? _rec_rec_ewma : num == 2 ? _rtt_ratio : _loss_rate ; }
-  DataType & mutable_field( unsigned int num )     { return num == 0 ? _rec_send_ewma : num == 1 ? _rec_rec_ewma : num == 2 ? _rtt_ratio : _loss_rate ; }
+  const DataType & field( unsigned int num ) const { return num == 0 ? _rec_send_ewma : num == 1 ? _rec_rec_ewma : num == 2 ? _rtt_ratio : _slow_rec_rec_ewma ; }
+  DataType & mutable_field( unsigned int num )     { return num == 0 ? _rec_send_ewma : num == 1 ? _rec_rec_ewma : num == 2 ? _rtt_ratio : _slow_rec_rec_ewma ; }
 
   // Should be called when a packet is about to be sent. This does not do anything now
-  //void packet_sent( const Packet & packet __attribute((unused)) ) {}
+  void packet_sent( const Packet & packet __attribute((unused)) ) {}
   // Should be called with all the packets that are received. This Updates the memory values
-  void packets_received( const std::vector< Packet > & packets, const unsigned int flow_id );
+  void packets_received( const std::vector< Packet > & packets, const unsigned int flow_id, const double link_rate_normalizing_factor );
   void advance_to( const unsigned int tickno __attribute((unused)) ) {}
 
   std::string str( void ) const;
 
   // compares all tracked values. Does not compare loss rate yet, as it is not yet used
-  bool operator>=( const Memory & other ) const { return (_rec_send_ewma >= other._rec_send_ewma) && (_rec_rec_ewma >= other._rec_rec_ewma) && (_rtt_ratio >= other._rtt_ratio) && (_loss_rate >= other._loss_rate); }
+  bool operator>=( const Memory & other ) const { return (_rec_send_ewma >= other._rec_send_ewma) && (_rec_rec_ewma >= other._rec_rec_ewma) && (_rtt_ratio >= other._rtt_ratio) && (_slow_rec_rec_ewma >= other._slow_rec_rec_ewma); }
   // compares all tracked values
-  bool operator<( const Memory & other ) const { return (_rec_send_ewma < other._rec_send_ewma) && (_rec_rec_ewma < other._rec_rec_ewma) && (_rtt_ratio < other._rtt_ratio) && (_loss_rate < other._loss_rate); }
+  bool operator<( const Memory & other ) const { return (_rec_send_ewma < other._rec_send_ewma) && (_rec_rec_ewma < other._rec_rec_ewma) && (_rtt_ratio < other._rtt_ratio) && (_slow_rec_rec_ewma < other._slow_rec_rec_ewma); }
   // compares all tracked values
-  bool operator==( const Memory & other ) const { return (_rec_send_ewma == other._rec_send_ewma) && (_rec_rec_ewma == _rec_rec_ewma) && (_rtt_ratio == other._rtt_ratio) && (_loss_rate == other._loss_rate); }
+  bool operator==( const Memory & other ) const { return (_rec_send_ewma == other._rec_send_ewma) && (_rec_rec_ewma == _rec_rec_ewma) && (_rtt_ratio == other._rtt_ratio) && (_slow_rec_rec_ewma == other._slow_rec_rec_ewma); }
 
   RemyBuffers::Memory DNA( void ) const;
   Memory( const bool is_lower_limit, const RemyBuffers::Memory & dna );

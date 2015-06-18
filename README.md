@@ -14,7 +14,7 @@ For remy and aimd congestion control, it is not a reliable transport. Kernel's a
 
 It sends it on a real network. It prints command line usage except for cctype, which is assumed to be 'remy' by default (other options are 'kernel', 'tcp' and 'pcc').
 
-Further, the signal type (with loss signal-without slow_rewma, without slow-rewma and aith slow_rewma-without loss signal) are controlled by which memory-xx.hh/memory-xx.cc are included (xx can be 'default,' 'with-loss-signal' and 'without-slow-rewma') are included and also by the appropriate protobufs-xx folder. This are controlled in the options in compile.sh. According to that appropriate binaries (remy, rat-runner, scoring-example) are generated. Binaries generated with these three configurations are already present.
+Further, the signal type (with loss signal-without slow_rewma, without slow-rewma and aith slow_rewma-without loss signal) are controlled by which memory-xx.hh/memory-xx.cc are included (xx can be 'default,' 'with-loss-signal' and 'without-slow-rewma') are included and also by the appropriate protobufs-xx folder. This are controlled by the options in configs.hh. According to that appropriate binaries (remy, rat-runner, scoring-example) are generated. Binaries generated with these three configurations are already present.
 
 Receivers:
  - The receivers for various types of congestion control algorithms are as follows

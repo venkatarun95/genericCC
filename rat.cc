@@ -19,14 +19,18 @@ Rat::Rat( WhiskerTree & s_whiskers, const bool s_track )
 {
 }
 
-void Rat::packets_received( const vector< Packet > & packets ) {
+void Rat::packets_received( const vector< Packet > & packets, const double link_rate_normalizing_factor ) {
   _packets_received += packets.size();
   
+  int flow_id = -1;
+  assert( packets.size() );
   for ( auto &packet : packets ){
     _largest_ack = max( packet.seq_num, _largest_ack );
+    flow_id = packet.flow_id;
   }
+  assert( flow_id != -1 );
 
-  _memory.packets_received( packets, _flow_id );
+  _memory.packets_received( packets, flow_id/*_flow_id*/, link_rate_normalizing_factor );
 
   const Whisker & current_whisker( _whiskers.use_whisker( _memory, _track ) );
 

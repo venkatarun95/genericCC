@@ -97,7 +97,7 @@ void protobuf_AssignDesc_dna_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Memory, rec_send_ewma_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Memory, rec_rec_ewma_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Memory, rtt_ratio_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Memory, loss_rate_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Memory, slow_rec_rec_ewma_),
   };
   Memory_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -182,13 +182,14 @@ void protobuf_AssignDesc_dna_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Range));
   ConfigRange_descriptor_ = file->message_type(7);
-  static const int ConfigRange_offsets_[6] = {
+  static const int ConfigRange_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, link_packets_per_ms_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, rtt_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, num_senders_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, link_limit_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, mean_off_duration_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, mean_on_duration_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ConfigRange, drop_rate_),
   };
   ConfigRange_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -202,13 +203,14 @@ void protobuf_AssignDesc_dna_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ConfigRange));
   NetConfig_descriptor_ = file->message_type(8);
-  static const int NetConfig_offsets_[6] = {
+  static const int NetConfig_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, mean_on_duration_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, mean_off_duration_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, num_senders_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, link_ppt_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, delay_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, link_limit_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(NetConfig, drop_rate_),
   };
   NetConfig_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -291,31 +293,33 @@ void protobuf_AddDesc_dna_2eproto() {
     "ange\0224\n\toptimizer\030\005 \001(\0132!.RemyBuffers.Op"
     "timizationSettings\"U\n\013MemoryRange\022\"\n\005low"
     "er\030\013 \001(\0132\023.RemyBuffers.Memory\022\"\n\005upper\030\014"
-    " \001(\0132\023.RemyBuffers.Memory\"[\n\006Memory\022\025\n\rr"
+    " \001(\0132\023.RemyBuffers.Memory\"c\n\006Memory\022\025\n\rr"
     "ec_send_ewma\030\025 \001(\001\022\024\n\014rec_rec_ewma\030\026 \001(\001"
-    "\022\021\n\trtt_ratio\030\027 \001(\001\022\021\n\tloss_rate\030\031 \001(\001\"y"
-    "\n\007Whisker\022\030\n\020window_increment\030\037 \001(\021\022\027\n\017w"
-    "indow_multiple\030  \001(\001\022\021\n\tintersend\030! \001(\001\022"
-    "(\n\006domain\030\" \001(\0132\030.RemyBuffers.MemoryRang"
-    "e\"\216\001\n\023OptimizationSetting\022\021\n\tmin_value\030)"
-    " \001(\001\022\021\n\tmax_value\030* \001(\001\022\022\n\nmin_change\030+ "
-    "\001(\001\022\022\n\nmax_change\030, \001(\001\022\022\n\nmultiplier\030- "
-    "\001(\001\022\025\n\rdefault_value\030. \001(\001\"\302\001\n\024Optimizat"
-    "ionSettings\022:\n\020window_increment\0303 \001(\0132 ."
-    "RemyBuffers.OptimizationSetting\0229\n\017windo"
-    "w_multiple\0304 \001(\0132 .RemyBuffers.Optimizat"
-    "ionSetting\0223\n\tintersend\0305 \001(\0132 .RemyBuff"
-    "ers.OptimizationSetting\"\"\n\005Range\022\013\n\003low\030"
-    "= \001(\001\022\014\n\004high\030> \001(\001\"\345\001\n\013ConfigRange\022/\n\023l"
-    "ink_packets_per_ms\030G \001(\0132\022.RemyBuffers.R"
-    "ange\022\037\n\003rtt\030H \001(\0132\022.RemyBuffers.Range\022\'\n"
-    "\013num_senders\030I \001(\0132\022.RemyBuffers.Range\022&"
-    "\n\nlink_limit\030J \001(\0132\022.RemyBuffers.Range\022\031"
-    "\n\021mean_off_duration\030Q \001(\001\022\030\n\020mean_on_dur"
-    "ation\030R \001(\001\"\212\001\n\tNetConfig\022\030\n\020mean_on_dur"
-    "ation\030\001 \001(\001\022\031\n\021mean_off_duration\030\002 \001(\001\022\023"
-    "\n\013num_senders\030\003 \001(\r\022\020\n\010link_ppt\030\004 \001(\001\022\r\n"
-    "\005delay\030\005 \001(\001\022\022\n\nlink_limit\030\006 \001(\r", 1312);
+    "\022\021\n\trtt_ratio\030\027 \001(\001\022\031\n\021slow_rec_rec_ewma"
+    "\030\030 \001(\001\"y\n\007Whisker\022\030\n\020window_increment\030\037 "
+    "\001(\021\022\027\n\017window_multiple\030  \001(\001\022\021\n\tintersen"
+    "d\030! \001(\001\022(\n\006domain\030\" \001(\0132\030.RemyBuffers.Me"
+    "moryRange\"\216\001\n\023OptimizationSetting\022\021\n\tmin"
+    "_value\030) \001(\001\022\021\n\tmax_value\030* \001(\001\022\022\n\nmin_c"
+    "hange\030+ \001(\001\022\022\n\nmax_change\030, \001(\001\022\022\n\nmulti"
+    "plier\030- \001(\001\022\025\n\rdefault_value\030. \001(\001\"\302\001\n\024O"
+    "ptimizationSettings\022:\n\020window_increment\030"
+    "3 \001(\0132 .RemyBuffers.OptimizationSetting\022"
+    "9\n\017window_multiple\0304 \001(\0132 .RemyBuffers.O"
+    "ptimizationSetting\0223\n\tintersend\0305 \001(\0132 ."
+    "RemyBuffers.OptimizationSetting\"\"\n\005Range"
+    "\022\013\n\003low\030= \001(\001\022\014\n\004high\030> \001(\001\"\214\002\n\013ConfigRa"
+    "nge\022/\n\023link_packets_per_ms\030G \001(\0132\022.RemyB"
+    "uffers.Range\022\037\n\003rtt\030H \001(\0132\022.RemyBuffers."
+    "Range\022\'\n\013num_senders\030I \001(\0132\022.RemyBuffers"
+    ".Range\022&\n\nlink_limit\030J \001(\0132\022.RemyBuffers"
+    ".Range\022\031\n\021mean_off_duration\030Q \001(\001\022\030\n\020mea"
+    "n_on_duration\030R \001(\001\022%\n\tdrop_rate\030S \001(\0132\022"
+    ".RemyBuffers.Range\"\235\001\n\tNetConfig\022\030\n\020mean"
+    "_on_duration\030\001 \001(\001\022\031\n\021mean_off_duration\030"
+    "\002 \001(\001\022\023\n\013num_senders\030\003 \001(\r\022\020\n\010link_ppt\030\004"
+    " \001(\001\022\r\n\005delay\030\005 \001(\001\022\022\n\nlink_limit\030\006 \001(\r\022"
+    "\021\n\tdrop_rate\030\007 \001(\001", 1378);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "dna.proto", &protobuf_RegisterTypes);
   WhiskerTree::default_instance_ = new WhiskerTree();
@@ -998,7 +1002,7 @@ void MemoryRange::Swap(MemoryRange* other) {
 const int Memory::kRecSendEwmaFieldNumber;
 const int Memory::kRecRecEwmaFieldNumber;
 const int Memory::kRttRatioFieldNumber;
-const int Memory::kLossRateFieldNumber;
+const int Memory::kSlowRecRecEwmaFieldNumber;
 #endif  // !_MSC_VER
 
 Memory::Memory()
@@ -1020,7 +1024,7 @@ void Memory::SharedCtor() {
   rec_send_ewma_ = 0;
   rec_rec_ewma_ = 0;
   rtt_ratio_ = 0;
-  loss_rate_ = 0;
+  slow_rec_rec_ewma_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1059,7 +1063,7 @@ void Memory::Clear() {
     rec_send_ewma_ = 0;
     rec_rec_ewma_ = 0;
     rtt_ratio_ = 0;
-    loss_rate_ = 0;
+    slow_rec_rec_ewma_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -1114,19 +1118,19 @@ bool Memory::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(201)) goto parse_loss_rate;
+        if (input->ExpectTag(193)) goto parse_slow_rec_rec_ewma;
         break;
       }
 
-      // optional double loss_rate = 25;
-      case 25: {
+      // optional double slow_rec_rec_ewma = 24;
+      case 24: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
-         parse_loss_rate:
+         parse_slow_rec_rec_ewma:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
-                 input, &loss_rate_)));
-          set_has_loss_rate();
+                 input, &slow_rec_rec_ewma_)));
+          set_has_slow_rec_rec_ewma();
         } else {
           goto handle_uninterpreted;
         }
@@ -1167,9 +1171,9 @@ void Memory::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteDouble(23, this->rtt_ratio(), output);
   }
 
-  // optional double loss_rate = 25;
-  if (has_loss_rate()) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(25, this->loss_rate(), output);
+  // optional double slow_rec_rec_ewma = 24;
+  if (has_slow_rec_rec_ewma()) {
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(24, this->slow_rec_rec_ewma(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -1195,9 +1199,9 @@ void Memory::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(23, this->rtt_ratio(), target);
   }
 
-  // optional double loss_rate = 25;
-  if (has_loss_rate()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(25, this->loss_rate(), target);
+  // optional double slow_rec_rec_ewma = 24;
+  if (has_slow_rec_rec_ewma()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(24, this->slow_rec_rec_ewma(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -1226,8 +1230,8 @@ int Memory::ByteSize() const {
       total_size += 2 + 8;
     }
 
-    // optional double loss_rate = 25;
-    if (has_loss_rate()) {
+    // optional double slow_rec_rec_ewma = 24;
+    if (has_slow_rec_rec_ewma()) {
       total_size += 2 + 8;
     }
 
@@ -1267,8 +1271,8 @@ void Memory::MergeFrom(const Memory& from) {
     if (from.has_rtt_ratio()) {
       set_rtt_ratio(from.rtt_ratio());
     }
-    if (from.has_loss_rate()) {
-      set_loss_rate(from.loss_rate());
+    if (from.has_slow_rec_rec_ewma()) {
+      set_slow_rec_rec_ewma(from.slow_rec_rec_ewma());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -1296,7 +1300,7 @@ void Memory::Swap(Memory* other) {
     std::swap(rec_send_ewma_, other->rec_send_ewma_);
     std::swap(rec_rec_ewma_, other->rec_rec_ewma_);
     std::swap(rtt_ratio_, other->rtt_ratio_);
-    std::swap(loss_rate_, other->loss_rate_);
+    std::swap(slow_rec_rec_ewma_, other->slow_rec_rec_ewma_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -2593,6 +2597,7 @@ const int ConfigRange::kNumSendersFieldNumber;
 const int ConfigRange::kLinkLimitFieldNumber;
 const int ConfigRange::kMeanOffDurationFieldNumber;
 const int ConfigRange::kMeanOnDurationFieldNumber;
+const int ConfigRange::kDropRateFieldNumber;
 #endif  // !_MSC_VER
 
 ConfigRange::ConfigRange()
@@ -2605,6 +2610,7 @@ void ConfigRange::InitAsDefaultInstance() {
   rtt_ = const_cast< ::RemyBuffers::Range*>(&::RemyBuffers::Range::default_instance());
   num_senders_ = const_cast< ::RemyBuffers::Range*>(&::RemyBuffers::Range::default_instance());
   link_limit_ = const_cast< ::RemyBuffers::Range*>(&::RemyBuffers::Range::default_instance());
+  drop_rate_ = const_cast< ::RemyBuffers::Range*>(&::RemyBuffers::Range::default_instance());
 }
 
 ConfigRange::ConfigRange(const ConfigRange& from)
@@ -2621,6 +2627,7 @@ void ConfigRange::SharedCtor() {
   link_limit_ = NULL;
   mean_off_duration_ = 0;
   mean_on_duration_ = 0;
+  drop_rate_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2634,6 +2641,7 @@ void ConfigRange::SharedDtor() {
     delete rtt_;
     delete num_senders_;
     delete link_limit_;
+    delete drop_rate_;
   }
 }
 
@@ -2674,6 +2682,9 @@ void ConfigRange::Clear() {
     }
     mean_off_duration_ = 0;
     mean_on_duration_ = 0;
+    if (has_drop_rate()) {
+      if (drop_rate_ != NULL) drop_rate_->::RemyBuffers::Range::Clear();
+    }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -2768,6 +2779,20 @@ bool ConfigRange::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(666)) goto parse_drop_rate;
+        break;
+      }
+
+      // optional .RemyBuffers.Range drop_rate = 83;
+      case 83: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_drop_rate:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_drop_rate()));
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2824,6 +2849,12 @@ void ConfigRange::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteDouble(82, this->mean_on_duration(), output);
   }
 
+  // optional .RemyBuffers.Range drop_rate = 83;
+  if (has_drop_rate()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      83, this->drop_rate(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -2868,6 +2899,13 @@ void ConfigRange::SerializeWithCachedSizes(
   // optional double mean_on_duration = 82;
   if (has_mean_on_duration()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(82, this->mean_on_duration(), target);
+  }
+
+  // optional .RemyBuffers.Range drop_rate = 83;
+  if (has_drop_rate()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        83, this->drop_rate(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -2919,6 +2957,13 @@ int ConfigRange::ByteSize() const {
       total_size += 2 + 8;
     }
 
+    // optional .RemyBuffers.Range drop_rate = 83;
+    if (has_drop_rate()) {
+      total_size += 2 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->drop_rate());
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -2964,6 +3009,9 @@ void ConfigRange::MergeFrom(const ConfigRange& from) {
     if (from.has_mean_on_duration()) {
       set_mean_on_duration(from.mean_on_duration());
     }
+    if (from.has_drop_rate()) {
+      mutable_drop_rate()->::RemyBuffers::Range::MergeFrom(from.drop_rate());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -2993,6 +3041,7 @@ void ConfigRange::Swap(ConfigRange* other) {
     std::swap(link_limit_, other->link_limit_);
     std::swap(mean_off_duration_, other->mean_off_duration_);
     std::swap(mean_on_duration_, other->mean_on_duration_);
+    std::swap(drop_rate_, other->drop_rate_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -3017,6 +3066,7 @@ const int NetConfig::kNumSendersFieldNumber;
 const int NetConfig::kLinkPptFieldNumber;
 const int NetConfig::kDelayFieldNumber;
 const int NetConfig::kLinkLimitFieldNumber;
+const int NetConfig::kDropRateFieldNumber;
 #endif  // !_MSC_VER
 
 NetConfig::NetConfig()
@@ -3041,6 +3091,7 @@ void NetConfig::SharedCtor() {
   link_ppt_ = 0;
   delay_ = 0;
   link_limit_ = 0u;
+  drop_rate_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3082,6 +3133,7 @@ void NetConfig::Clear() {
     link_ppt_ = 0;
     delay_ = 0;
     link_limit_ = 0u;
+    drop_rate_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -3184,6 +3236,22 @@ bool NetConfig::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(57)) goto parse_drop_rate;
+        break;
+      }
+
+      // optional double drop_rate = 7;
+      case 7: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
+         parse_drop_rate:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
+                 input, &drop_rate_)));
+          set_has_drop_rate();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3236,6 +3304,11 @@ void NetConfig::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(6, this->link_limit(), output);
   }
 
+  // optional double drop_rate = 7;
+  if (has_drop_rate()) {
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(7, this->drop_rate(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -3272,6 +3345,11 @@ void NetConfig::SerializeWithCachedSizes(
   // optional uint32 link_limit = 6;
   if (has_link_limit()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(6, this->link_limit(), target);
+  }
+
+  // optional double drop_rate = 7;
+  if (has_drop_rate()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(7, this->drop_rate(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -3319,6 +3397,11 @@ int NetConfig::ByteSize() const {
           this->link_limit());
     }
 
+    // optional double drop_rate = 7;
+    if (has_drop_rate()) {
+      total_size += 1 + 8;
+    }
+
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -3364,6 +3447,9 @@ void NetConfig::MergeFrom(const NetConfig& from) {
     if (from.has_link_limit()) {
       set_link_limit(from.link_limit());
     }
+    if (from.has_drop_rate()) {
+      set_drop_rate(from.drop_rate());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -3393,6 +3479,7 @@ void NetConfig::Swap(NetConfig* other) {
     std::swap(link_ppt_, other->link_ppt_);
     std::swap(delay_, other->delay_);
     std::swap(link_limit_, other->link_limit_);
+    std::swap(drop_rate_, other->drop_rate_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

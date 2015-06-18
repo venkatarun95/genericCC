@@ -349,12 +349,12 @@ class Memory : public ::google::protobuf::Message {
   inline double rtt_ratio() const;
   inline void set_rtt_ratio(double value);
 
-  // optional double loss_rate = 25;
-  inline bool has_loss_rate() const;
-  inline void clear_loss_rate();
-  static const int kLossRateFieldNumber = 25;
-  inline double loss_rate() const;
-  inline void set_loss_rate(double value);
+  // optional double slow_rec_rec_ewma = 24;
+  inline bool has_slow_rec_rec_ewma() const;
+  inline void clear_slow_rec_rec_ewma();
+  static const int kSlowRecRecEwmaFieldNumber = 24;
+  inline double slow_rec_rec_ewma() const;
+  inline void set_slow_rec_rec_ewma(double value);
 
   // @@protoc_insertion_point(class_scope:RemyBuffers.Memory)
  private:
@@ -364,15 +364,15 @@ class Memory : public ::google::protobuf::Message {
   inline void clear_has_rec_rec_ewma();
   inline void set_has_rtt_ratio();
   inline void clear_has_rtt_ratio();
-  inline void set_has_loss_rate();
-  inline void clear_has_loss_rate();
+  inline void set_has_slow_rec_rec_ewma();
+  inline void clear_has_slow_rec_rec_ewma();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   double rec_send_ewma_;
   double rec_rec_ewma_;
   double rtt_ratio_;
-  double loss_rate_;
+  double slow_rec_rec_ewma_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
@@ -936,6 +936,15 @@ class ConfigRange : public ::google::protobuf::Message {
   inline double mean_on_duration() const;
   inline void set_mean_on_duration(double value);
 
+  // optional .RemyBuffers.Range drop_rate = 83;
+  inline bool has_drop_rate() const;
+  inline void clear_drop_rate();
+  static const int kDropRateFieldNumber = 83;
+  inline const ::RemyBuffers::Range& drop_rate() const;
+  inline ::RemyBuffers::Range* mutable_drop_rate();
+  inline ::RemyBuffers::Range* release_drop_rate();
+  inline void set_allocated_drop_rate(::RemyBuffers::Range* drop_rate);
+
   // @@protoc_insertion_point(class_scope:RemyBuffers.ConfigRange)
  private:
   inline void set_has_link_packets_per_ms();
@@ -950,6 +959,8 @@ class ConfigRange : public ::google::protobuf::Message {
   inline void clear_has_mean_off_duration();
   inline void set_has_mean_on_duration();
   inline void clear_has_mean_on_duration();
+  inline void set_has_drop_rate();
+  inline void clear_has_drop_rate();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -959,9 +970,10 @@ class ConfigRange : public ::google::protobuf::Message {
   ::RemyBuffers::Range* link_limit_;
   double mean_off_duration_;
   double mean_on_duration_;
+  ::RemyBuffers::Range* drop_rate_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_dna_2eproto();
   friend void protobuf_AssignDesc_dna_2eproto();
@@ -1068,6 +1080,13 @@ class NetConfig : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 link_limit() const;
   inline void set_link_limit(::google::protobuf::uint32 value);
 
+  // optional double drop_rate = 7;
+  inline bool has_drop_rate() const;
+  inline void clear_drop_rate();
+  static const int kDropRateFieldNumber = 7;
+  inline double drop_rate() const;
+  inline void set_drop_rate(double value);
+
   // @@protoc_insertion_point(class_scope:RemyBuffers.NetConfig)
  private:
   inline void set_has_mean_on_duration();
@@ -1082,6 +1101,8 @@ class NetConfig : public ::google::protobuf::Message {
   inline void clear_has_delay();
   inline void set_has_link_limit();
   inline void clear_has_link_limit();
+  inline void set_has_drop_rate();
+  inline void clear_has_drop_rate();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1091,9 +1112,10 @@ class NetConfig : public ::google::protobuf::Message {
   ::google::protobuf::uint32 num_senders_;
   ::google::protobuf::uint32 link_limit_;
   double delay_;
+  double drop_rate_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_dna_2eproto();
   friend void protobuf_AssignDesc_dna_2eproto();
@@ -1436,26 +1458,26 @@ inline void Memory::set_rtt_ratio(double value) {
   rtt_ratio_ = value;
 }
 
-// optional double loss_rate = 25;
-inline bool Memory::has_loss_rate() const {
+// optional double slow_rec_rec_ewma = 24;
+inline bool Memory::has_slow_rec_rec_ewma() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void Memory::set_has_loss_rate() {
+inline void Memory::set_has_slow_rec_rec_ewma() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void Memory::clear_has_loss_rate() {
+inline void Memory::clear_has_slow_rec_rec_ewma() {
   _has_bits_[0] &= ~0x00000008u;
 }
-inline void Memory::clear_loss_rate() {
-  loss_rate_ = 0;
-  clear_has_loss_rate();
+inline void Memory::clear_slow_rec_rec_ewma() {
+  slow_rec_rec_ewma_ = 0;
+  clear_has_slow_rec_rec_ewma();
 }
-inline double Memory::loss_rate() const {
-  return loss_rate_;
+inline double Memory::slow_rec_rec_ewma() const {
+  return slow_rec_rec_ewma_;
 }
-inline void Memory::set_loss_rate(double value) {
-  set_has_loss_rate();
-  loss_rate_ = value;
+inline void Memory::set_slow_rec_rec_ewma(double value) {
+  set_has_slow_rec_rec_ewma();
+  slow_rec_rec_ewma_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -2068,6 +2090,44 @@ inline void ConfigRange::set_mean_on_duration(double value) {
   mean_on_duration_ = value;
 }
 
+// optional .RemyBuffers.Range drop_rate = 83;
+inline bool ConfigRange::has_drop_rate() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void ConfigRange::set_has_drop_rate() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void ConfigRange::clear_has_drop_rate() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void ConfigRange::clear_drop_rate() {
+  if (drop_rate_ != NULL) drop_rate_->::RemyBuffers::Range::Clear();
+  clear_has_drop_rate();
+}
+inline const ::RemyBuffers::Range& ConfigRange::drop_rate() const {
+  return drop_rate_ != NULL ? *drop_rate_ : *default_instance_->drop_rate_;
+}
+inline ::RemyBuffers::Range* ConfigRange::mutable_drop_rate() {
+  set_has_drop_rate();
+  if (drop_rate_ == NULL) drop_rate_ = new ::RemyBuffers::Range;
+  return drop_rate_;
+}
+inline ::RemyBuffers::Range* ConfigRange::release_drop_rate() {
+  clear_has_drop_rate();
+  ::RemyBuffers::Range* temp = drop_rate_;
+  drop_rate_ = NULL;
+  return temp;
+}
+inline void ConfigRange::set_allocated_drop_rate(::RemyBuffers::Range* drop_rate) {
+  delete drop_rate_;
+  drop_rate_ = drop_rate;
+  if (drop_rate) {
+    set_has_drop_rate();
+  } else {
+    clear_has_drop_rate();
+  }
+}
+
 // -------------------------------------------------------------------
 
 // NetConfig
@@ -2202,6 +2262,28 @@ inline ::google::protobuf::uint32 NetConfig::link_limit() const {
 inline void NetConfig::set_link_limit(::google::protobuf::uint32 value) {
   set_has_link_limit();
   link_limit_ = value;
+}
+
+// optional double drop_rate = 7;
+inline bool NetConfig::has_drop_rate() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void NetConfig::set_has_drop_rate() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void NetConfig::clear_has_drop_rate() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void NetConfig::clear_drop_rate() {
+  drop_rate_ = 0;
+  clear_has_drop_rate();
+}
+inline double NetConfig::drop_rate() const {
+  return drop_rate_;
+}
+inline void NetConfig::set_drop_rate(double value) {
+  set_has_drop_rate();
+  drop_rate_ = value;
 }
 
 

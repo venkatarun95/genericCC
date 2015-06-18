@@ -19,6 +19,7 @@ public:
   //virtual void onLoss(const int* losslist, const int& size) {}   virtual void onTimeout() {}
   virtual void onPktSent( int seq_num __attribute((unused)) ) { }
   virtual void onTimeout() {}
+  virtual void onLinkRateMeasurement( double measured_link_rate __attribute((unused)) ) {}
   //virtual void onPktReceived(const CPacket* pkt) {}
   //virtual void processCustomMsg(const CPacket& pkt) {}
 
@@ -31,8 +32,6 @@ protected:
 
   double _intersend_time;
   double _the_window;
-
-private:
   double _timeout;
 }; 
 

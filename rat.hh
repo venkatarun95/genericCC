@@ -31,7 +31,7 @@ private:
 public:
   Rat( WhiskerTree & s_whiskers, const bool s_track=false );
 
-  void packets_received( const std::vector< Packet > & packets );
+  void packets_received( const std::vector< Packet > & packets, const double link_rate_normalizing_factor );
   void reset( const double & tickno ); /* start new flow */
 
   bool send( const double & curtime );

@@ -21,8 +21,8 @@ message Memory {
   optional double rec_send_ewma = 21;
   optional double rec_rec_ewma = 22;
   optional double rtt_ratio = 23;
-  //optional double slow_rec_rec_ewma = 24;
-  optional double loss_rate = 25;
+  optional double slow_rec_rec_ewma = 24;
+  //optional double loss_rate = 25;
 }
 
 message Whisker {
@@ -64,6 +64,8 @@ message ConfigRange {
 
   optional double mean_off_duration = 81;
   optional double mean_on_duration = 82;
+
+  optional Range drop_rate = 83; //CHANGED - new
 }
 
 message NetConfig {
@@ -73,4 +75,5 @@ message NetConfig {
   optional double link_ppt = 4;
   optional double delay = 5;
   optional uint32 link_limit = 6; //CHANGED - new
+  optional double drop_rate = 7; //CHANGED - new
 }

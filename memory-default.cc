@@ -6,9 +6,8 @@ static const double alpha = 1.0 / 8.0;
 
 static const double slow_alpha = 1.0 / 256.0;
 
-void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id )
+void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id, const double link_rate_normalizing_factor )
 {
-
   for ( const auto &x : packets ) {
     if ( x.flow_id != flow_id ) {
       continue;
@@ -28,9 +27,16 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
       _min_rtt = rtt;
       _rtt_estimate = rtt;
     } else {
-      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent);
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received);
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received);
+      
+//#ifdef SCALE_SEND_RECEIVE_EWMA
+      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
+      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
+      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
+//#else
+//      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent);
+//      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received);
+//      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received);
+//#endif
 
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
@@ -60,7 +66,7 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
 string Memory::str( void ) const
 {
   char tmp[ 256 ];
-  snprintf( tmp, 256, "sewma=%f, rewma=%f, rttr=%f, lossrt=%f", _rec_send_ewma, _rec_rec_ewma, _rtt_ratio,  _loss_rate);
+  snprintf( tmp, 256, "sewma=%f, rewma=%f, rttr=%f, srewma=%f", _rec_send_ewma, _rec_rec_ewma, _rtt_ratio,  _slow_rec_rec_ewma);
   return tmp;
 }
 
@@ -76,8 +82,8 @@ RemyBuffers::Memory Memory::DNA( void ) const
   ret.set_rec_send_ewma( _rec_send_ewma );
   ret.set_rec_rec_ewma( _rec_rec_ewma );
   ret.set_rtt_ratio( _rtt_ratio );
-  //ret.set_slow_rec_rec_ewma( _slow_rec_rec_ewma );
-  ret.set_loss_rate( _loss_rate );
+  ret.set_slow_rec_rec_ewma( _slow_rec_rec_ewma );
+  //ret.set_loss_rate( _loss_rate );
   return ret;
 }
 
@@ -89,9 +95,8 @@ Memory::Memory( const bool is_lower_limit, const RemyBuffers::Memory & dna )
   : _rec_send_ewma( get_val_or_default( dna, rec_send_ewma, is_lower_limit ) ),
     _rec_rec_ewma( get_val_or_default( dna, rec_rec_ewma, is_lower_limit ) ),
     _rtt_ratio( get_val_or_default( dna, rtt_ratio, is_lower_limit ) ),
-    //_slow_rec_rec_ewma( get_val_or_default( dna, slow_rec_rec_ewma, is_lower_limit ) ),
-    _slow_rec_rec_ewma( 0 ),
-    _loss_rate( get_val_or_default( dna, loss_rate, is_lower_limit ) ),
+    _slow_rec_rec_ewma( get_val_or_default( dna, slow_rec_rec_ewma, is_lower_limit ) ),
+    _loss_rate( 0 ),
     _last_tick_sent( 0 ),
     _last_tick_received( 0 ),
     _min_rtt( 0 ),
@@ -108,8 +113,8 @@ size_t hash_value( const Memory & mem )
   boost::hash_combine( seed, mem._rec_send_ewma );
   boost::hash_combine( seed, mem._rec_rec_ewma );
   boost::hash_combine( seed, mem._rtt_ratio );
-  //boost::hash_combine( seed, mem._slow_rec_rec_ewma );
-  boost::hash_combine( seed, mem._loss_rate);
+  boost::hash_combine( seed, mem._slow_rec_rec_ewma );
+  //boost::hash_combine( seed, mem._loss_rate);
 
   return seed;
 }

@@ -14,7 +14,7 @@
 class RemyCC: public CCC
 {
 private:
-	WhiskerTree tree; // WARNING: it is bad practice to use pointers
+	WhiskerTree tree;
 	Rat rat;
 
 	std::chrono::high_resolution_clock::time_point start_time_point;
@@ -24,26 +24,24 @@ private:
 
 	double current_timestamp();
 
+	double measured_link_rate;
+
 protected:
 
 public:
 
-   virtual void init();
-   virtual void onACK(int ack) override ;//{ std::cout<<"Acked "<<ack<<" "; }
-   //virtual void onPktReceived(const int& seq_num){ std::cout<<"Packet Received\n"; }
-   //virtual void onLoss(const int* losslist, const int& size) { std::cout<<"Packet Lost\n"; }
-   //virtual void onTimeout() { std::cout<<"Timeout!\n"; }
-   virtual void onPktSent(int seq_num) override ;//{ std::cout<<"Packet Sent"; }
+	virtual void init();
+	virtual void onACK(int ack) override ;
+	virtual void onPktSent(int seq_num) override ;
+	virtual void onTimeout() override { std::cerr << "Ack timed out!\n"; }
+	virtual void onLinkRateMeasurement( double s_measured_link_rate ) override;
 
-	/*RemyCC () : tree( nullptr ), rat( nullptr ), start_time_point(), unacknowledged_packets(), flow_id( 0 ) {
-		_the_window = 2; 
-      _intersend_time=1000000;
-	}*/
 	RemyCC( WhiskerTree & s_tree ) 
-	: 	tree( s_tree ), rat( tree ), start_time_point(), unacknowledged_packets(), flow_id( 0 ) 
+	: 	tree( s_tree ), rat( tree ), start_time_point(), unacknowledged_packets(), flow_id( 0 ), measured_link_rate( -1 ) 
 	{
-		_the_window = 2; 
-      _intersend_time=0;
+		_the_window = 2;
+		_intersend_time = 0;
+		_timeout = 1000;
 	}
 };
 

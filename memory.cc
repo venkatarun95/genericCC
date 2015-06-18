@@ -1,6 +1,8 @@
 #ifndef MEMORY_CC
 #define MEMORY_CC
 
+#include "configs.hh"
+
 #ifdef REMYTYPE_DEFAULT
 
 #include "memory-default.cc"

@@ -14,28 +14,39 @@ void RemyCC::init( void ){
 	_intersend_time = 0;
 }
 
-void RemyCC::onACK(int  ack){
+void RemyCC::onACK(int ack){
 	int seq_num = ack - 1;
 	//assert( unacknowledged_packets.count( seq_num ) > 0);
-	if ( unacknowledged_packets.count( seq_num ) > 1 ) {std::cout<<"Dupack: "<<seq_num<<std::endl; return;}
-	if ( unacknowledged_packets.count( seq_num ) > 1 ) {std::cout<<"Unknown Ack!! "<<seq_num<<std::endl; return;}
+	if ( unacknowledged_packets.count( seq_num ) > 1 ) { std::cerr<<"Dupack: "<<seq_num<<std::endl; return; }
+	if ( unacknowledged_packets.count( seq_num ) < 1 ) { std::cerr<<"Unknown Ack!! "<<seq_num<<std::endl; return; }
 
 	double sent_time = unacknowledged_packets[seq_num];
 	unacknowledged_packets.erase(seq_num);
-
+	
 	Packet p ( 0, flow_id, sent_time, seq_num );
 	p.tick_received = current_timestamp();
 	
 	std::vector< Packet > temp_packets ( 1, p );
-	rat.packets_received( temp_packets );
-
+	
+#ifdef SCALE_SEND_RECEIVE_EWMA
+	if ( measured_link_rate >= 0 )
+		rat.packets_received( temp_packets, TRAINING_LINK_RATE / measured_link_rate );
+	else
+		rat.packets_received( temp_packets, 1.0 );
+	_the_window = rat.cur_window_size() * measured_link_rate / TRAINING_LINK_RATE;
+	_intersend_time = rat.cur_intersend_time() * TRAINING_LINK_RATE / measured_link_rate;
+#else
+	rat.packets_received( temp_packets, 1.0 );
 	_the_window = rat.cur_window_size();
 	_intersend_time = rat.cur_intersend_time();
+#endif
+}
+
+void RemyCC::onLinkRateMeasurement( double s_measured_link_rate ){
+	measured_link_rate = s_measured_link_rate;
+	//std::cout << "Link Rate: " << measured_link_rate << " packets/s" << std::endl;
 }
 
 void RemyCC::onPktSent(int seq_num){
-	//assert(false);
-	//assert( unacknowledged_packets.count( pkt->m_iSeqNo ) == 0 );
-	//unacknowledged_packets.insert( std::make_pair<int, double>( seq_num, current_timestamp() ) );
 	unacknowledged_packets[seq_num] = current_timestamp();	
 }
