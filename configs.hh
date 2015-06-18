@@ -1,0 +1,1 @@
+#define SCALE_SEND_RECEIVE_EWMA
