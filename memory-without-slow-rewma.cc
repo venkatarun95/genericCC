@@ -6,7 +6,7 @@ static const double alpha = 1.0 / 8.0;
 
 static const double slow_alpha = 1.0 / 256.0;
 
-void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id )
+void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id, const double link_rate_normalizing_factor )
 {
   int seq_num = packets.front().seq_num;
 
@@ -27,9 +27,9 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
       _last_tick_received = x.tick_received;
       _min_rtt = rtt;
     } else {
-      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent);
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received);
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received);
+      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
+      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
+      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
 
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;

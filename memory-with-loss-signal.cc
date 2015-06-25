@@ -6,7 +6,7 @@ static const double alpha = 1.0 / 8.0;
 
 static const double slow_alpha = 1.0 / 256.0;
 
-void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id )
+void Memory::packets_received( const vector< Packet > & packets, const unsigned int flow_id, const double link_rate_normalizing_factor )
 {
 
   for ( const auto &x : packets ) {
@@ -16,8 +16,9 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
 
     // Assumption: assuming no reordering to detect packet loss
     if ( _largest_ack + 1 < x.seq_num ){
-      _lost_packets.push( x );
+      _lost_packets.push( x );  // WARNING: x is not the lost packet, but merely a representative. Bulk loss will not be detected this way
     }
+    
     _largest_ack = max( _largest_ack, x.seq_num );
     _all_packets_in_rtt_window.push( x );
 
@@ -28,10 +29,10 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
       _min_rtt = rtt;
       _rtt_estimate = rtt;
     } else {
-      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent);
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received);
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received);
-
+      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
+      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
+      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
+      
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
 

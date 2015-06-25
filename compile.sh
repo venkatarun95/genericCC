@@ -2,7 +2,7 @@ clear
 clear
 echo Compiling...
 
-OPTIONS="-I./protobufs-default -I./udt"
+OPTIONS="-I./protobufs-loss-signal-remy -I./udt"
 
 #g++ -DHAVE_CONFIG_H -I. $OPTIONS -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -pg -O2 -MT random.o -MD -MP -c -o random.o random.cc
 

@@ -5,12 +5,13 @@
 #include <vector>
 #include <queue>
 #include <cassert>
-
 #include <iostream>
 #include <string>
 
 #include "packet.hh"
 #include "dna.pb.h"
+
+#include "configs.hh"
 
 // Keeps track of the state variable for a particular sender.
 class Memory {
@@ -82,7 +83,7 @@ public:
   // Should be called when a packet is about to be sent. This does not do anything now
   //void packet_sent( const Packet & packet __attribute((unused)) ) {}
   // Should be called with all the packets that are received. This Updates the memory values
-  void packets_received( const std::vector< Packet > & packets, const unsigned int flow_id );
+  void packets_received( const std::vector< Packet > & packets, const unsigned int flow_id, const double link_rate_normalizing_factor );
   void advance_to( const unsigned int tickno __attribute((unused)) ) {}
 
   std::string str( void ) const;

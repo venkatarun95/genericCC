@@ -4,21 +4,40 @@
 #include "configs.hh"
 
 #ifdef REMYTYPE_DEFAULT
-
+#define REMYTYPE_DEFINED
 #include "memory-default.cc"
+#endif
 
-#elif REMYTYPE_LOSS_SIGNAL
 
+
+#ifdef REMYTYPE_LOSS_SIGNAL
+
+#ifdef REMYTYPE_DEFINED
+#error Only one remy type should be defined 
+#endif
+
+#define REMYTYPE_DEFINED
 #include "memory-with-loss-signal.cc"
 
-#elif REMYTYPE_WITHOUT_SLOW_REWMA
+#endif /* REMYTYPE_LOSS_SIGNAL */
 
+
+
+#ifdef REMYTYPE_WITHOUT_SLOW_REWMA
+
+#ifdef REMYTYPE_DEFINED
+#error Only one remy type should be defined 
+#endif
+
+#define REMYTYPE_DEFINED
 #include "memory-without-slow-rewma.cc"
 
-#else
+#endif /* REMYTYPE_WITHOUT_SLOW_REWMA */
 
+
+
+#ifndef REMYTYPE_DEFINED
 #error Please define a remy type
-
 #endif
 
-#endif
+#endif /* MEMORY_CC*/

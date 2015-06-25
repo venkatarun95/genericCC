@@ -118,7 +118,7 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 	chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 	_last_send_time = 0.0;
 	double cur_time = 0;
-	// note: this is not the sequence number is actually transmitted. packets are transmitted in groups of num_packets_per_link_rate_measurement (say n) numbered as seq_num*n, seq_num*n + 1, ..., seq_num*n + (n-1)
+	// note: this is not the sequence number that is actually transmitted. packets are transmitted in groups of num_packets_per_link_rate_measurement (say n) numbered as seq_num*n, seq_num*n + 1, ..., seq_num*n + (n-1)
 	int seq_num = 0;
 	_last_send_time = 0.0;
 	_largest_ack = -1;

@@ -28,6 +28,7 @@ void RemyCC::onACK(int ack){
 	
 	std::vector< Packet > temp_packets ( 1, p );
 	
+	//std::cout<<TRAINING_LINK_RATE / measured_link_rate<<" ";
 #ifdef SCALE_SEND_RECEIVE_EWMA
 	if ( measured_link_rate >= 0 )
 		rat.packets_received( temp_packets, TRAINING_LINK_RATE / measured_link_rate );
@@ -36,6 +37,7 @@ void RemyCC::onACK(int ack){
 	_the_window = rat.cur_window_size() * measured_link_rate / TRAINING_LINK_RATE;
 	_intersend_time = rat.cur_intersend_time() * TRAINING_LINK_RATE / measured_link_rate;
 #else
+//	assert( false );
 	rat.packets_received( temp_packets, 1.0 );
 	_the_window = rat.cur_window_size();
 	_intersend_time = rat.cur_intersend_time();

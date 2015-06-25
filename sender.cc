@@ -36,6 +36,8 @@ int main( int argc, char *argv[] ){
 			whiskers = WhiskerTree( tree );
 			ratFound = true;
 
+			fprintf( stdout, "%s\n", whiskers.str().c_str() );
+
 			if ( close( fd ) < 0 ) {
 				perror( "close" );
 				exit( 1 );
