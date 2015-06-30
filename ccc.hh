@@ -15,7 +15,7 @@ public:
 public:
   virtual void init() {}
   virtual void close() {}
-  virtual void onACK( int ack __attribute((unused)) ) {std::cout<<"Hello!";}
+  virtual void onACK( int ack __attribute((unused)), double receiver_timestamp __attribute((unused)) ) {std::cout<<"Hello!";}
   //virtual void onLoss(const int* losslist, const int& size) {}   virtual void onTimeout() {}
   virtual void onPktSent( int seq_num __attribute((unused)) ) { }
   virtual void onTimeout() {}

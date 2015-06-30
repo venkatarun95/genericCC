@@ -25,14 +25,16 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
     if ( _last_tick_sent == 0 || _last_tick_received == 0 ) {
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
+      _last_receiver_timestamp = x.receiver_timestamp;
       _min_rtt = rtt;
     } else {
       _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
+      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
+      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
 
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
+      _last_receiver_timestamp = x.receiver_timestamp;
 
       _min_rtt = min( _min_rtt, rtt );
       _rtt_ratio = double( rtt ) / double( _min_rtt );
@@ -78,6 +80,7 @@ Memory::Memory( const bool is_lower_limit, const RemyBuffers::Memory & dna )
     _slow_rec_rec_ewma( 0 ),
     _last_tick_sent( 0 ),
     _last_tick_received( 0 ),
+    _last_receiver_timestamp( 0 ),
     _min_rtt( 0 ),
     _num_packets_received( 0 ),
     _num_packets_lost( 0 )

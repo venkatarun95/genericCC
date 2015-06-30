@@ -14,32 +14,28 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
     }
 
     // Assumption: assuming no reordering to detect packet loss
-    if ( _largest_ack + 1 < x.seq_num ){
+    /*if ( _largest_ack + 1 < x.seq_num ){
       _lost_packets.push( x );
-    }
+    }*/
     _largest_ack = max( _largest_ack, x.seq_num );
-    _all_packets_in_rtt_window.push( x );
+    //_all_packets_in_rtt_window.push( x );
 
     const double rtt = x.tick_received - x.tick_sent;
     if ( _last_tick_sent == 0 || _last_tick_received == 0 ) {
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
+      _last_receiver_timestamp = x.receiver_timestamp;
       _min_rtt = rtt;
       _rtt_estimate = rtt;
     } else {
       
-//#ifdef SCALE_SEND_RECEIVE_EWMA
       _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received) * link_rate_normalizing_factor;
-//#else
-//      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent);
-//      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.tick_received - _last_tick_received);
-//      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.tick_received - _last_tick_received);
-//#endif
+      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
+      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
 
       _last_tick_sent = x.tick_sent;
       _last_tick_received = x.tick_received;
+      _last_receiver_timestamp = x.receiver_timestamp;
 
       _min_rtt = min( _min_rtt, rtt );
       _rtt_ratio = double( rtt ) / double( _min_rtt );
@@ -50,7 +46,7 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
   }
 
   // pop all older packets
-  while( !_lost_packets.empty() && _lost_packets.front().tick_received <  _last_tick_received - _rtt_estimate )
+  /*while( !_lost_packets.empty() && _lost_packets.front().tick_received <  _last_tick_received - _rtt_estimate )
     _lost_packets.pop();
 
   while( !_all_packets_in_rtt_window.empty() && _all_packets_in_rtt_window.front().tick_received <  _last_tick_received - _rtt_estimate)
@@ -60,7 +56,7 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
   if ( _all_packets_in_rtt_window.empty() )
     _loss_rate = 0;
   else
-    _loss_rate = (( 0.1 * _lost_packets.size() ) / _all_packets_in_rtt_window.size()) * 163840;
+    _loss_rate = (( 0.1 * _lost_packets.size() ) / _all_packets_in_rtt_window.size()) * 163840;*/
 }
 
 string Memory::str( void ) const
@@ -99,10 +95,11 @@ Memory::Memory( const bool is_lower_limit, const RemyBuffers::Memory & dna )
     _loss_rate( 0 ),
     _last_tick_sent( 0 ),
     _last_tick_received( 0 ),
+    _last_receiver_timestamp( 0 ),
     _min_rtt( 0 ),
     _rtt_estimate( 0 ),
-    _lost_packets( ),
-    _all_packets_in_rtt_window( ),
+    //_lost_packets( ),
+    //_all_packets_in_rtt_window( ),
     _largest_ack( 0 )
 {
 }

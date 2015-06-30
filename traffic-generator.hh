@@ -61,9 +61,7 @@ void TrafficGenerator<T>::send_data( int seed, int id ){
 				//WARNING: Right now I am switching on for a number of KILO BYTES. It is not time switched
 				double on_duration = on.sample( );
 				//double on_duration = 1000.0 * _traffic_params._exponential_on_off._mean_on_duration;
-				std::cout<<"Switching on";
 				_ctcp.send_data( on_duration, flow_id, id );
-				std::cout<<"Switching off";
 
 				++ flow_id;
 				std::cout<<"Sender: "<<id<<", Flow: "<<flow_id<<". Transmitted for "<<on_duration<<" ms."<<endl<<std::flush;

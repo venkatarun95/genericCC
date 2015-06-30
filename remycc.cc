@@ -14,7 +14,7 @@ void RemyCC::init( void ){
 	_intersend_time = 0;
 }
 
-void RemyCC::onACK(int ack){
+void RemyCC::onACK(int ack, double receiver_timestamp){
 	int seq_num = ack - 1;
 	//assert( unacknowledged_packets.count( seq_num ) > 0);
 	if ( unacknowledged_packets.count( seq_num ) > 1 ) { std::cerr<<"Dupack: "<<seq_num<<std::endl; return; }
@@ -25,6 +25,7 @@ void RemyCC::onACK(int ack){
 	
 	Packet p ( 0, flow_id, sent_time, seq_num );
 	p.tick_received = current_timestamp();
+	p.receiver_timestamp = receiver_timestamp;
 	
 	std::vector< Packet > temp_packets ( 1, p );
 	

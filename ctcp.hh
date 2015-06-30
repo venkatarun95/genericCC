@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <thread>
 
@@ -114,8 +115,12 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 	memset(buf, '-', sizeof(char)*packet_size);
 	buf[packet_size-1] = '\0';
 
+	// for link logging
+	ofstream link_logfile;
+	if( LINK_LOGGING )
+		link_logfile.open( LINK_LOGGING_FILENAME, ios::out );
+
 	// for flow control
-	chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 	_last_send_time = 0.0;
 	double cur_time = 0;
 	// note: this is not the sequence number that is actually transmitted. packets are transmitted in groups of num_packets_per_link_rate_measurement (say n) numbered as seq_num*n, seq_num*n + 1, ..., seq_num*n + (n-1)
@@ -136,7 +141,9 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 	int num_packets_transmitted = 0;
 	int transmitted_bytes = 0;
 
+	cout << "Assuming training link rate of: " << TRAINING_LINK_RATE << " pkts/sec" << endl;
 	congctrl.init();
+	chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 
 	while ( cur_time < duration ){
 		cur_time = current_timestamp( start_time_point );
@@ -151,6 +158,7 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 				header.flow_id = flow_id;
 				header.src_id = src_id;
 				header.sender_timestamp = cur_time;
+				header.receiver_timestamp = 0;
 
 				memcpy(buf, &header, sizeof(TCPHeader));
 				congctrl.onPktSent( header.seq_num );
@@ -210,6 +218,10 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 						else
 							last_measured_link_rate = last_measured_link_rate*(1 - link_rate_measurement_alpha) + link_rate_measurement_alpha*( 1000 / ( link_rate_measurement_accumulator / (num_packets_per_link_rate_measurement - 1) ) );
 						congctrl.onLinkRateMeasurement( last_measured_link_rate );
+
+						// Log measured link speed and last RTT
+						if( LINK_LOGGING )
+							link_logfile << cur_time << " " << last_measured_link_rate << " " << cur_time - ack_header.sender_timestamp << endl;
 					}
 				}
 			}
@@ -233,12 +245,13 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 		
 		// Inform our congestion control protocol
 		_largest_ack = max(_largest_ack, ack_header.seq_num);
-		congctrl.onACK( ack_header.seq_num );
+		congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
 	}
+
+	cur_time = current_timestamp( start_time_point );
 
 	congctrl.close();
 
-	cur_time = current_timestamp( start_time_point );
 	this->tot_time_transmitted += cur_time;
 
 	double throughput = transmitted_bytes/( cur_time / 1000.0 );
@@ -249,6 +262,9 @@ void CTCP<T>::send_data ( double duration, int flow_id, int src_id ){
 	double avg_throughput = tot_bytes_transmitted / ( tot_time_transmitted / 1000.0);
 	double avg_delay = (tot_delay / 1000) / tot_packets_transmitted;
 	std::cout<<"\n\tAvg. Throughput: "<<avg_throughput<<" bytes/sec\n\tAverage Delay: "<<avg_delay<<" sec/packet\n";
+
+	if( LINK_LOGGING )
+		link_logfile.close();
 }
 
 template<class T>

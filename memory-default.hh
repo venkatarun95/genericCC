@@ -29,12 +29,13 @@ private:
 
   double _last_tick_sent;
   double _last_tick_received;
+  double _last_receiver_timestamp;
   double _min_rtt;
 
   // for having packet loss as a signal
   double _rtt_estimate; 
-  std::queue< Packet > _lost_packets;
-  std::queue< Packet > _all_packets_in_rtt_window;
+  //std::queue< Packet > _lost_packets;
+  //std::queue< Packet > _all_packets_in_rtt_window;
   int _largest_ack;
 
 public:
@@ -48,10 +49,11 @@ public:
       _loss_rate( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
+      _last_receiver_timestamp( 0 ),
       _min_rtt( 0 ),
       _rtt_estimate( 0 ),
-      _lost_packets( ),
-      _all_packets_in_rtt_window( ),
+      //_lost_packets( ),
+      //_all_packets_in_rtt_window( ),
       _largest_ack( 0 )
   {}
 
@@ -63,19 +65,20 @@ public:
       _loss_rate( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
+      _last_receiver_timestamp( 0 ),
       _min_rtt( 0 ),
       _rtt_estimate( 0 ),
-      _lost_packets( ),
-      _all_packets_in_rtt_window( ),
+      //_lost_packets( ),
+      //_all_packets_in_rtt_window( ),
       _largest_ack( 0 )
   {}
 
   void reset( void ) { 
     _rec_send_ewma = _rec_rec_ewma = _rtt_ratio = _slow_rec_rec_ewma = _loss_rate = _last_tick_sent = _last_tick_received = _min_rtt = _rtt_estimate = _largest_ack = 0; 
-    while ( !_lost_packets.empty() )
+    /*while ( !_lost_packets.empty() )
       _lost_packets.pop();
     while( !_all_packets_in_rtt_window.empty() )
-      _all_packets_in_rtt_window.pop();
+      _all_packets_in_rtt_window.pop();*/
   }
 
   static const unsigned int datasize = 4;

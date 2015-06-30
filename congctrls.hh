@@ -22,7 +22,7 @@ public:
       setRTO(1000000);
    }
 
-   virtual void onACK(const int& ack)
+   virtual void onACK(const int& ack, double receiver_timestamp __attribute((unused)) )
    {
       if (ack == m_iLastACK)
       {

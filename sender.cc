@@ -8,7 +8,13 @@
 #include "pcc-tcp.hh"
 #include "traffic-generator.hh"
 
+// see configs.hh for details
+double TRAINING_LINK_RATE = 4000000.0/1500.0;
+bool LINK_LOGGING = false;
+std::string LINK_LOGGING_FILENAME;
+
 int main( int argc, char *argv[] ){
+	Memory temp;
 	WhiskerTree whiskers;
 	bool ratFound = false;
 
@@ -21,6 +27,11 @@ int main( int argc, char *argv[] ){
 	for ( int i = 1; i < argc; i++ ) {
 		std::string arg( argv[ i ] );
 		if ( arg.substr( 0, 3 ) == "if=" ) {
+			if( cctype != REMYCC ){
+				fprintf( stderr, "Warning: ignoring parameter 'if=' as cctype is not 'remy'.\n" );
+				continue;
+			}
+
 			std::string filename( arg.substr( 3 ) );
 			int fd = open( filename.c_str(), O_RDONLY );
 			if ( fd < 0 ) {
@@ -33,10 +44,9 @@ int main( int argc, char *argv[] ){
 				fprintf( stderr, "Could not parse %s.\n", filename.c_str() );
 				exit( 1 );
 			}
+	
 			whiskers = WhiskerTree( tree );
 			ratFound = true;
-
-			fprintf( stdout, "%s\n", whiskers.str().c_str() );
 
 			if ( close( fd ) < 0 ) {
 				perror( "close" );
@@ -55,7 +65,13 @@ int main( int argc, char *argv[] ){
 			offduration	= atoi( arg.substr( 12 ).c_str() );
 		else if( arg.substr( 0, 11 ) == "onduration=" )
 			onduration = atoi( arg.substr( 11 ).c_str() );
-		else if( arg.substr( 0, 7 ) == "cctype="){
+		else if( arg.substr( 0, 9 ) == "linkrate=" ) 
+			TRAINING_LINK_RATE = atof( arg.substr( 9 ).c_str() );
+		else if( arg.substr( 0, 8 ) == "linklog=" ){
+			LINK_LOGGING_FILENAME = arg.substr( 8 );
+			LINK_LOGGING = true;
+		}
+		else if( arg.substr( 0, 7 ) == "cctype=" ) {
 			std::string cctype_str = arg.substr( 7 );
 			if( cctype_str == "remy" )
 				cctype = CCType::REMYCC;
@@ -71,7 +87,7 @@ int main( int argc, char *argv[] ){
 	}
 
 	if ( serverip == "" || sourceip == "" || onduration <= 0 || offduration < 0 || sourceport == -1 || serverport == -1){
-		fprintf( stderr, "Usage: sender if=(ratname) serverip=(ipaddr) sourceip=(ipaddr) serverport=(port) sourceport=(port) offduration=(time in ms) onduration=(time in ms)\n");
+		fprintf( stderr, "Usage: sender serverip=(ipaddr) if=(ratname) sourceip=(ipaddr) serverport=(port) sourceport=(port) offduration=(time in ms) onduration=(time in ms) [cctype=remy|kernel|tcp|pcc] [linkrate=(packets/sec)] [linklog=filename]\n");
 		exit(1);
 	}
 

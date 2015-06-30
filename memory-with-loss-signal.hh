@@ -27,6 +27,7 @@ private:
 
   double _last_tick_sent;
   double _last_tick_received;
+  double _last_receiver_timestamp;
   double _min_rtt;
 
   // for having packet loss as a signal
@@ -45,6 +46,7 @@ public:
       _loss_rate( s_data.at( 3 ) ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
+      _last_receiver_timestamp( 0 ),
       _min_rtt( 0 ),
       _rtt_estimate( 0 ),
       _lost_packets( ),
@@ -60,6 +62,7 @@ public:
       _loss_rate( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
+      _last_receiver_timestamp( 0 ),
       _min_rtt( 0 ),
       _rtt_estimate( 0 ),
       _lost_packets( ),

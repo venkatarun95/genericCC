@@ -22,6 +22,7 @@ private:
 
   double _last_tick_sent;
   double _last_tick_received;
+  double _last_receiver_timestamp;
   double _min_rtt;
 
   unsigned long _num_packets_received;
@@ -36,6 +37,7 @@ public:
       _slow_rec_rec_ewma( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
+      _last_receiver_timestamp( 0 ),
       _min_rtt( 0 ),
       _num_packets_received( 0 ),
       _num_packets_lost( 0 )
@@ -48,6 +50,7 @@ public:
       _slow_rec_rec_ewma( 0 ),
       _last_tick_sent( 0 ),
       _last_tick_received( 0 ),
+      _last_receiver_timestamp( 0 ),
       _min_rtt( 0 ),
       _num_packets_received( 0 ),
       _num_packets_lost( 0 )

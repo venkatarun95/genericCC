@@ -6,9 +6,7 @@ class Packet
 public:
   unsigned int src;
   unsigned int flow_id;
-  // tick_sent is filled by Rat::packets_received which in turn is called by SwitchedSender::?::tick. 
-  // tick_received is filled by
-  double tick_sent, tick_received;
+  double tick_sent, tick_received, receiver_timestamp; // tick_sent and tick_received are filled by the sender. Receiver timestamp is filled by the reciever
   int seq_num;
 
   Packet( const unsigned int & s_src,
@@ -18,6 +16,7 @@ public:
     : src( s_src ),
       flow_id( s_flow_id ), tick_sent( s_tick_sent ),
       tick_received( -1 ),
+      receiver_timestamp( -1 ),
       seq_num( s_seq_num )
   {}
 };
