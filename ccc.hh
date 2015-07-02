@@ -9,15 +9,22 @@ public:
   CCC() : 
   _intersend_time( 0 ),
   _the_window( 2 ),
-  _timeout( 0.002 ) {}
+  _timeout( 0.004 ) {}
 
   virtual ~CCC() {}
 public:
   virtual void init() {}
   virtual void close() {}
-  virtual void onACK( int ack __attribute((unused)), double receiver_timestamp __attribute((unused)) ) {std::cout<<"Hello!";}
-  //virtual void onLoss(const int* losslist, const int& size) {}   virtual void onTimeout() {}
+  
+  // Note: for onAck and for onPktSent, each group of (see configs.hh)
+  // NUM_PACKETS_PER_LINK_RATE_MEASUREMENT group of packets is treated as one 
+  // packet. Therefore some congestion control protocols (such as RemyCC) must
+  // compensate for this. This decision was made so that the 'send_ewma' and 
+  // 'recv_ewma' are not messed with because of the deliberate packet bunching
+  virtual void onACK( int ack __attribute((unused)), 
+    double receiver_timestamp __attribute((unused)) ) {std::cout<<"Hello!";}
   virtual void onPktSent( int seq_num __attribute((unused)) ) { }
+  
   virtual void onTimeout() {}
   virtual void onLinkRateMeasurement( double measured_link_rate __attribute((unused)) ) {}
   //virtual void onPktReceived(const CPacket* pkt) {}

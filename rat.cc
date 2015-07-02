@@ -36,9 +36,6 @@ void Rat::packets_received( const vector< Packet > & packets, const double link_
 
   _the_window = current_whisker.window( _the_window );
   _intersend_time = current_whisker.intersend();
-
-  //CHANGE - edit - venkat
-  //printf("%d\n", _the_window);
 }
 
 void Rat::reset( const double & )
@@ -66,7 +63,7 @@ double Rat::next_event_time( const double & tickno ) const
   }
 }
 
-//returns whether or not a packet should be sent. If yes, updates internal state accordingly
+// returns whether or not a packet should be sent. If yes, updates internal state accordingly
 bool Rat::send( const double & curtime )
 {
   assert( _packets_sent >= _largest_ack + 1 );
