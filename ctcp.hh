@@ -18,7 +18,7 @@ using namespace std;
 #define data_size 1400
 
 template <class T>
-class CTCP{
+class CTCP {
 public:
   enum ConnectionType{ SENDER, RECEIVER };
 

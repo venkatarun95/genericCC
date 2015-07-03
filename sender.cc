@@ -5,7 +5,7 @@
 #include "remycc.hh"
 #include "ctcp.hh"
 #include "kernelTCP.hh"
-#include "pcc-tcp.hh"
+//#include "pcc-tcp.hh"
 #include "traffic-generator.hh"
 
 // see configs.hh for details
@@ -19,8 +19,8 @@ int main( int argc, char *argv[] ){
 	bool ratFound = false;
 
 	string serverip="", sourceip="";
-	int serverport=-1, sourceport=-1;
-	int offduration=-1, onduration=-1;
+	int serverport=8888, sourceport=0;
+	int offduration=5000, onduration=5000;
 
 	enum CCType { REMYCC, TCPCC, KERNELCC, PCC } cctype = REMYCC;
 
@@ -86,8 +86,8 @@ int main( int argc, char *argv[] ){
 		}
 	}
 
-	if ( serverip == "" || sourceip == "" || onduration <= 0 || offduration < 0 || sourceport == -1 || serverport == -1){
-		fprintf( stderr, "Usage: sender serverip=(ipaddr) if=(ratname) sourceip=(ipaddr) serverport=(port) sourceport=(port) offduration=(time in ms) onduration=(time in ms) [cctype=remy|kernel|tcp|pcc] [linkrate=(packets/sec)] [linklog=filename]\n");
+	if ( serverip == "" || sourceip == ""){
+		fprintf( stderr, "Usage: sender serverip=(ipaddr) if=(ratname) sourceip=(ipaddr) [serverport=(port)] [sourceport=(port)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc] [linkrate=(packets/sec)] [linklog=filename]\n");
 		exit(1);
 	}
 
@@ -118,9 +118,10 @@ int main( int argc, char *argv[] ){
 	}
 	else if ( cctype == CCType::PCC ){
 		fprintf( stdout, "Using PCC.\n");
-		PCC_TCP connection( serverip, serverport );
-		TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
-		traffic_generator.spawn_senders( 1 );
+		assert( false );
+		// PCC_TCP connection( serverip, serverport );
+		// TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		// traffic_generator.spawn_senders( 1 );
 	}
 	else{
 		assert( false );

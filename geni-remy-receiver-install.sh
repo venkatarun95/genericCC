@@ -39,7 +39,7 @@ then
         sudo apt-get install --force-yes --yes python-software-properties
         sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt-get update
-        sudo apt-get install libstdc++6-4.7-dev
+        sudo apt-get install --force-yes --yes libstdc++6-4.7-dev
 
         sudo apt-get install --force-yes --yes iperf tcptrace
 
@@ -63,7 +63,7 @@ then
         sudo make
         sudo make check
         sudo make install
-        sudo cp /usr/local/lib/libprotobuf.so.8 /usr/lib
+        sudo cp /usr/local/lib/libprotoc.so.8 /usr/lib
 
         # Get the genericCC binaries
         cd ~

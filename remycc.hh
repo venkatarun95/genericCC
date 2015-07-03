@@ -7,12 +7,12 @@
 
 #include "ccc.hh"
 
+#include "configs.hh"
 #include "rat.hh"
 #include "whiskertree.hh"
 #include "packet.hh"
 
-class RemyCC: public CCC
-{
+class RemyCC: public CCC {
 private:
 	WhiskerTree tree;
 	Rat rat;
