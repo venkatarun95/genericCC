@@ -15,7 +15,7 @@
 using namespace std;
 
 #define packet_size 1500
-#define data_size 1400
+#define data_size packet_size-sizeof(TCPHeader)
 
 template <class T>
 class CTCP {
@@ -135,6 +135,7 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
   double latest_ack_time_in_group = -1;
   double link_rate_measurement_accumulator = -1; // for accumulating before finding average
   double last_measured_link_rate = -1; // in packets/s. In case num_packets_per_link_rate_measurement == 1, this value will be maintained as -1.
+  TCPHeader first_packet_in_group_ack_header = {0, 0, 0, 0, 0}; // we give the first packet in the group as the representative packet because then bunching does not happen
 
   // for maintaining performance statistics
   double delay_sum = 0;
@@ -151,7 +152,7 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
     // Warning: The number of unacknowledged packets may exceed the congestion window by num_packets_per_link_rate_measurement
     while ( ( (_packets_sent < _largest_ack + 1 + congctrl.get_the_window()) 
       and (_last_send_time + congctrl.get_intersend_time()*num_packets_per_link_rate_measurement <= cur_time) ) 
-      and cur_time < duration ){
+      and cur_time < duration ) {
       
       for (  int i = 0;i < num_packets_per_link_rate_measurement; i++ ) {
         header.seq_num = seq_num * num_packets_per_link_rate_measurement + i;
@@ -162,18 +163,20 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
 
         memcpy( buf, &header, sizeof(TCPHeader) );
         socket.senddata( buf, packet_size, NULL );
+        if ( true )
+          congctrl.onPktSent( header.seq_num );
 
         _packets_sent++;
 
         cur_time = current_timestamp( start_time_point );
       }
-      congctrl.onPktSent( header.seq_num );
 
       cur_time = current_timestamp( start_time_point );
       _last_send_time = cur_time;
       seq_num++; // a set of num_packets_per_link_rate_measurement (say 3) are sequence numbered as 3n, 3n+1, 3n+2. This is later used for link rate measurement while receiving packets.
 
-      //cout<<congctrl.get_the_window()<<" "<<congctrl.get_intersend_time()<<endl;
+      // Uncomment for logging
+      // cout<<congctrl.get_the_window()<<" "<<congctrl.get_intersend_time()<<" "<<last_measured_link_rate<<endl;
     }
 
     cur_time = current_timestamp( start_time_point );
@@ -199,6 +202,16 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
       continue;
     }
 
+    // Track performance statistics
+    delay_sum += cur_time - ack_header.sender_timestamp;
+    this->tot_delay += cur_time - ack_header.sender_timestamp;
+
+    transmitted_bytes += data_size;
+    this->tot_bytes_transmitted += data_size;
+
+    num_packets_transmitted += 1;
+    this->tot_packets_transmitted += 1;
+
     cur_time = current_timestamp( start_time_point );
 
     // measure link speed
@@ -217,7 +230,9 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
               last_measured_link_rate = ( 1000 / ( link_rate_measurement_accumulator / (num_packets_per_link_rate_measurement - 1) ) );
             else
               last_measured_link_rate = last_measured_link_rate*(1 - link_rate_measurement_alpha) + link_rate_measurement_alpha*( 1000 / ( link_rate_measurement_accumulator / (num_packets_per_link_rate_measurement - 1) ) );
-            congctrl.onLinkRateMeasurement( last_measured_link_rate );
+            #ifdef SCALE_SEND_RECEIVE_EWMA
+              congctrl.onLinkRateMeasurement( last_measured_link_rate );
+            #endif
 
             // Log measured link speed and last RTT
             if( LINK_LOGGING )
@@ -227,7 +242,8 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
             // NUM_PACKETS_PER_LINK_RATE_MEASUREMENT is treated as one packet 
             // as far as the congestion control protocol is concerned. This 
             // must be compensated for in the CC, for example in RemyCC
-            congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
+            //congctrl.onACK( first_packet_in_group_ack_header.seq_num, 
+             // first_packet_in_group_ack_header.receiver_timestamp );
           }
         }
       }
@@ -236,20 +252,17 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
         num_packets_received_in_current_group = 1;
         link_rate_measurement_accumulator = 0;
         latest_ack_time_in_group = cur_time;
+        first_packet_in_group_ack_header = ack_header;
       }
     }
+    else{
+      #ifdef SCALE_SEND_RECEIVE_EWMA
+          assert(false);
+      #endif
+    }
+    congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
 
-    // Track performance statistics
-    delay_sum += cur_time - ack_header.sender_timestamp;
-    this->tot_delay += cur_time - ack_header.sender_timestamp;
-
-    transmitted_bytes += data_size;
-    this->tot_bytes_transmitted += data_size;
-
-    num_packets_transmitted += 1;
-    this->tot_packets_transmitted += 1;
     
-    // Inform our congestion control protocol
     _largest_ack = max(_largest_ack, ack_header.seq_num);
   }
 

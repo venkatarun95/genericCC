@@ -1,5 +1,3 @@
-//#include <netdb.h>
-//#include <sys/types.h>
 #include <arpa/inet.h>
 #include <cassert>
 #include <errno.h>
@@ -14,7 +12,6 @@ int UDPSocket::bindsocket(string s_ipaddr, int s_port, string myaddr /* __attrib
 	ipaddr = s_ipaddr;
 	port = s_port;
 	sockaddr_in my_addr;
-	//memset((char *) &dest_addr, 0, sizeof(dest_addr));
 	
 	memset((char*) &my_addr, 0, sizeof(my_addr));
 	my_addr.sin_family = AF_INET;
@@ -25,12 +22,10 @@ int UDPSocket::bindsocket(string s_ipaddr, int s_port, string myaddr /* __attrib
         return -1;
     }
     myport = myport*2;
-    //memset((char *)&my_addr, 0, sizeof(my_addr)); my_addr.sin_family = AF_INET; my_addr.sin_addr.s_addr = htonl(INADDR_ANY); my_addr.sin_port = htons(0);
     if (bind(udp_socket, (struct sockaddr *)&my_addr, sizeof(my_addr)) < 0 ){
     	std::cerr<<"Failed to bind to port. Code: "<<errno<<endl;
         return -2;
     }
-    //cout<<my_addr.sin_addr.s_addr<<" "<<my_addr.sin_port<<endl;
 
 	bound = true;
 	return 0;
@@ -40,24 +35,6 @@ int UDPSocket::bindsocket(int s_port)
 {
 	ipaddr = "";
 	port = s_port;
-	/*struct sockaddr_in ip4addr;
-	int s;
-
-	ip4addr.sin_family = AF_INET;
-	ip4addr.sin_port = htons(port);
-
-	// return values
-	// 1  - success
-	// 0  - wrong format of ipaddr
-	// -1 - Internal error (ie. AF_INEt is wrong)
-	if(inet_pton(AF_INET, ipaddr.c_str(), &ip4addr.sin_addr) == -1){
-		std::cerr<<"Error while binding address. Code: "<<errno<<endl;
-		//assert (false);
-		return -1;
-	}
- 
- 	int res = bind(s, (struct sockaddr*)&ip4addr, sizeof ip4addr);
- 	// do something with res*/
  	sockaddr_in addr_struct;
 	memset((char *) &addr_struct, 0, sizeof(addr_struct));
      
@@ -72,7 +49,9 @@ int UDPSocket::bindsocket(int s_port)
  	return 0;
 }
 
-ssize_t UDPSocket::senddata(char* data, ssize_t size, sockaddr_in *s_dest_addr){
+// Sends data to the desired address. Returns number of bytes sent if
+// successful, -1 if not.
+ssize_t UDPSocket::senddata(const char* data, ssize_t size, sockaddr_in *s_dest_addr){
 	sockaddr_in dest_addr;
 	memset((char *) &dest_addr, 0, sizeof(dest_addr));
 	dest_addr.sin_family = AF_INET;
@@ -95,13 +74,14 @@ ssize_t UDPSocket::senddata(char* data, ssize_t size, sockaddr_in *s_dest_addr){
 	
 	if ( res == -1 ){
 		std::cerr<<"Error while sending datagram. Code: "<<errno<<std::endl;
-		assert(false);
+		//assert(false);
+		return -1;
 	}
 	
 	return res; // no of bytes sent
 }
 
-ssize_t UDPSocket::senddata(char* data, ssize_t size, string dest_ip, int dest_port){
+ssize_t UDPSocket::senddata(const char* data, ssize_t size, string dest_ip, int dest_port){
 	sockaddr_in dest_addr;
 	memset((char *) &dest_addr, 0, sizeof(dest_addr));
 	dest_addr.sin_family = AF_INET;
@@ -114,17 +94,21 @@ ssize_t UDPSocket::senddata(char* data, ssize_t size, string dest_ip, int dest_p
     return senddata(data, size, &dest_addr);
 }
 
-// Modifies buffer to contain a null terminated string of the received data and returns the received buffer size (or -1 or 0, see below)
+// Modifies buffer to contain a null terminated string of the received 
+// data and returns the received buffer size (or -1 or 0, see below)
 //
-// Takes timeout in milliseconds. If timeout, returns NULL without changing the buffer. If data arrives before timeout, modifies buffer with the received data and returns the sender's address
-// If timeout is negative, infinite timeout will be used. If it is 0, function will return immediately. Timeout will be rounded up to kernel time granularity,
-// and kernel scheduling delays may cause actual timeout to exceed what is specified
-//
-// Functionality can be easily added to modify an argument to store the sender's address/ But since I am not using it yet, it is not implemented.
+// Takes timeout in milliseconds. If timeout, returns -1 without 
+// changing the buffer. If data arrives before timeout, modifies buffer
+// with the received data and returns the places the sender's address
+// in other_addr
+// 
+// If timeout is negative, infinite timeout will be used. If it is 0,
+// function will return immediately. Timeout will be rounded up to 
+// kernel time granularity, and kernel scheduling delays may cause 
+// actual timeout to exceed what is specified
 int UDPSocket::receivedata(char* buffer, int bufsize, int timeout, sockaddr_in &other_addr){
 	assert(bound); // Socket not bound to an address. Please either use 'bind' or 'sendto'
 
-    //sockaddr_in other_addr;
 	unsigned int other_len;
 
 	struct pollfd pfds[1];
@@ -141,8 +125,6 @@ int UDPSocket::receivedata(char* buffer, int bufsize, int timeout, sockaddr_in &
 			}
 			buffer[res] = '\0'; //terminating null character is not added by default
 
-			//cout<<inet_ntoa(other_addr.sin_addr)<<" $@#^$ "<<ntohs(other_addr.sin_port)<<" "<<other_len<<endl;
-			//return other_addr;
 			return res;
 		}
 		else{
@@ -163,3 +145,14 @@ int UDPSocket::receivedata(char* buffer, int bufsize, int timeout, sockaddr_in &
 		assert( false ); //should never come here
 	}
 }
+
+void UDPSocket::decipher_socket_addr(sockaddr_in addr, std::string& ip_addr, int& port) {
+	ip_addr = inet_ntoa(addr.sin_addr);
+	port = ntohs(addr.sin_port);
+}
+
+string UDPSocket::decipher_socket_addr(sockaddr_in addr) {
+	string ip_addr; int port;
+	UDPSocket::decipher_socket_addr(addr, ip_addr, port);
+	return ip_addr + ":" + to_string(port);
+ }

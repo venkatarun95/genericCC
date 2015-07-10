@@ -1,15 +1,18 @@
-#include <iostream>
-#include <string.h>
+#include <cassert>
 #include <chrono>
+#include <iostream>
+#include <mutex>
+#include <string.h>
+#include <thread>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include "tcp-header.hh"
 #include "udp-socket.hh"
 
-#define BUFFSIZE 1500
+#define BUFFSIZE 15000
 
 using namespace std;
 
@@ -27,33 +30,35 @@ mutex socket_lock;
 // Currently is only robust if the sender is not behind a NAT, but only the 
 // sender needs to be changed to fix this. 
 void punch_NAT(string serverip, UDPSocket &sender_socket) {
-	const int bufsize;
-	char buff[bufsize];
-	sockaddr_in addr_holder;
+	const int buffsize = 2048;
+	char buff[buffsize];
+	UDPSocket::SockAddress addr_holder;
 	UDPSocket server_socket;
 
 	server_socket.bindsocket(serverip, 4839, "0.0.0.0", 0);
 	while (1) {
 		this_thread::sleep_for( chrono::seconds(5) );
 
-		server_socket.senddata("Listen", 6, serverip, 4839);
-		server_socket.receivedata(buff, bufsize, -1, addr_holder);
+		server_socket.senddata(string("Listen").c_str(), 6, serverip, 4839);
+		server_socket.receivedata(buff, buffsize, -1, addr_holder);
 
 		char ip_addr[32];
 		int port;
-		sscanf(buff, "%s %d", ip_addr, &port);
+		sscanf(buff, "%s:%d", ip_addr, &port);
 
 		int attempt_count = 0;
-		while(attempt_count < 500) {
+		const int num_attempts = 500;
+		while(attempt_count < num_attempts) {
 			socket_lock.lock();
 				sender_socket.senddata("NATPunch", 8, string(ip_addr), port);
 				// keep the timeout short so that acks are sent in time
 				int received = sender_socket.receivedata(buff, buffsize, 5, 
 															addr_holder);
-			socket.unlock()
+			socket_lock.unlock();
 			if (received == 0) break;
 			++ attempt_count;
 		}
+		cout << "Could not connect to sender at " << UDPSocket::decipher_socket_addr(addr_holder) << endl;
 	}
 }
 
@@ -67,11 +72,13 @@ void echo_packets(UDPSocket &sender_socket) {
 		chrono::high_resolution_clock::now();
 
 	while (1) {
-		int received = -1;
-		while (received != 0) {
-			socket_lock.lock();
-				received = sender_socket.receivedata(buff, BUFFSIZE, 5000, sender_addr);
-			socket_lock.unlock();
+		int received __attribute((unused)) = -1;
+		while (received == -1) {
+			//socket_lock.lock();
+				received = sender_socket.receivedata(buff, BUFFSIZE, -1, \
+					sender_addr);
+			//socket_lock.unlock();
+			assert( received != -1 );
 		}
 
 		TCPHeader *header = (TCPHeader*)buff;
@@ -80,18 +87,24 @@ void echo_packets(UDPSocket &sender_socket) {
 				chrono::high_resolution_clock::now() - start_time_point
 			).count()*1000; //in milliseconds
 
-		socket_lock.lock();
+		//socket_lock.lock();
 			sender_socket.senddata(buff, sizeof(TCPHeader), &sender_addr);
-		socket_lock.unlock();
+		//socket_lock.unlock();
 	}
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+	if (argc != 2) {
+		cout << "Please specify the IP address of the NAT server" << endl;
+		return 0;
+	}
+	string nat_ip_addr = argv[1];
+
 	UDPSocket sender_socket;
-	socket.bindsocket(8888);
+	sender_socket.bindsocket(8888);
 	
-	thread nat_thread(punch_NAT, socket);
-	echo_packets(socket);
+	//thread nat_thread(punch_NAT, nat_ip_addr, ref(sender_socket));
+	echo_packets(sender_socket);
 
 	return 0;
 }

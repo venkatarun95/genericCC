@@ -3,11 +3,13 @@
 
 #include <string>
 
-#include <sys/socket.h>
-#include <sys/poll.h>
 #include <netinet/in.h>
+#include <sys/poll.h>
+#include <sys/socket.h>
 
 class UDPSocket{
+public:
+	typedef sockaddr_in SockAddress;
 private:
 	int udp_socket;
 
@@ -22,9 +24,12 @@ public:
 
 	int bindsocket(std::string ipaddr, int port, std::string myaddr, int myport);
 	int bindsocket(int port);
-	ssize_t senddata(char* data, ssize_t size, sockaddr_in *s_dest_addr);
-	ssize_t senddata(char* data, ssize_t size, std::string dest_ip, int dest_port);
-	int receivedata(char* buffer, int bufsize, int timeout, sockaddr_in &other_addr);
+	ssize_t senddata(const char* data, ssize_t size, SockAddress *s_dest_addr);
+	ssize_t senddata(const char* data, ssize_t size, std::string dest_ip, int dest_port);
+	int receivedata(char* buffer, int bufsize, int timeout, SockAddress &other_addr);
+
+	static void decipher_socket_addr(SockAddress addr, std::string& ip_addr, int& port);
+	static std::string decipher_socket_addr(SockAddress addr);
 };
 
 #endif

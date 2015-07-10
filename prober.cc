@@ -8,7 +8,7 @@
 #include "tcp-header.hh"
 #include "udp-socket.hh"
 
-#define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT (2)
+#define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT (50)
 // the lower the value, the slower the exponential averaging
 #define LINK_RATE_MEASUREMENT_ALPHA (1)
 

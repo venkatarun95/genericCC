@@ -84,6 +84,9 @@ int main( int argc, char *argv[] ){
 			else
 				fprintf( stderr, "Unrecognised congestion control protocol '%s'.\n", cctype_str.c_str() );
 		}
+		else {
+			fprintf( stderr, "Unrecognised option '%s'.\n", arg.c_str() );
+		}
 	}
 
 	if ( serverip == "" || sourceip == ""){

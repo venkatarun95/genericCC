@@ -33,7 +33,7 @@ void RemyCC::onACK(int ack, double receiver_timestamp){
 	if ( measured_link_rate >= 0 ){
 		// normalize w.r.t NUM_PACKETS_PER_LINK_RATE_MEASUREMENT because this 
 		// function is called only once for each group of NUM_PACKETS_PER_LINK_RATE_MEASUREMENT
-		rat.packets_received( temp_packets, NUM_PACKETS_PER_LINK_RATE_MEASUREMENT * TRAINING_LINK_RATE / measured_link_rate );
+		rat.packets_received( temp_packets, 1 * TRAINING_LINK_RATE / measured_link_rate );
 	}
 	else
 		rat.packets_received( temp_packets, 1.0 );
