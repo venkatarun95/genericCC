@@ -5,8 +5,8 @@ import re
 import time
 
 rat_names = []
-num_senders_list = [1, 1]
-num_kernels_list = [1, 1]
+num_senders_list = [1, 4, 8, 12, 16]
+num_kernels_list = [0]
 
 def discover_rats(directory):
     global rat_names
@@ -28,15 +28,13 @@ def run_test(cctype, rat_id, num_senders, num_kernels, cmd_line_args):
         serverport = '5001'
         rat_id = 0 # some default. The 'sender' program will ignore it.
         num_senders += num_kernels
-        num_kernels = 0
     elif cctype == 'remy':
         serverport = '8888'
     else:
         assert(False)
 
     out_filename = os.path.join(cmd_line_args.raw_output_folder, 
-        cctype + '-' + rat_names[rat_id].split('/')[-1] + '-' 
-        + str(num_kernels) + '-' + str(num_senders))
+        cctype + '-' + rat_names[rat_id].split('/')[-1] + '-' + str(num_senders))
     in_filename = rat_names[rat_id]
 
     linkppt = re_rat_name.match(in_filename).group(1)
