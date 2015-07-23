@@ -37,9 +37,9 @@ public:
 protected:
   void setRTO(const int& usRTO){ _timeout = usRTO/1000.0;}
 
-  double _intersend_time;
+  double _intersend_time; // in ms
   double _the_window;
-  double _timeout;
+  double _timeout; // in ms
 }; 
 
 #endif

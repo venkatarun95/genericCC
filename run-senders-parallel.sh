@@ -18,7 +18,7 @@ kill_child_processes() {
 # Ctrl-C trap. Catches INT signal
 trap "kill_child_processes 1 $$; exit 0" INT
 
-echo "Usage: source_interface serverip serverport cctype ratname numsenders linkppt numkernels outfilename"
+echo "Usage: source_interface serverip serverport cctype ratname delta numsenders linkppt numkernels outfilename"
 
 source_interface=$1
 sourceip=`ip addr show $source_interface | sed -n '/inet /{s/^.*inet \([0-9.]\+\).*$/\1/;p}'`
@@ -26,14 +26,16 @@ serverip=$2
 serverport=$3
 cctype=$4
 ratname=$5
-num_senders=$6
-linkppt=$7
-numkernels=$8
-outfilename=$9
+delta=$6
+num_senders=$7
+linkppt=$8
+numkernels=$9
+outfilename=${10}
 
 remytype=
-onduration=5000
-offduration=5000
+onduration=0
+offduration=60000
+echo "Running for weird time"
 
 echo "Running for $num_senders sender(s)"
 echo "prober $serverip $sourceip $serverport $outfilename-prober"
@@ -44,13 +46,17 @@ proberpid=
 if [ $cctype = "kernel" ]
 then
 	sudo tcpdump -i $source_interface -w /tmp/tcpdump.dat & 
-else
+elif [ $numkernels>0 ]
+then
+	echo "Instantiating $numkernels kernels"
 	sudo tcpdump -i $source_interface -w /tmp/controltcpdump.dat & 
 
 	for (( i=1; i<=$numkernels; i++ ))
 	do
-		iperf -c $serverip -t 100 & pid=$!
+		#iperf -c $serverip -t 100 & pid=$!
 		kernelpids+=" $pid"
+		echo "Starting kernel onoff sender"
+		./sender$remytype cctype=kernel serverip=$serverip sourceip=$sourceip sourceport=0 serverport=$serverport onduration=$onduration offduration=$offduration linkrate=$linkppt >> $outfilename & pid=$!
 	done
 fi
 
@@ -58,7 +64,7 @@ fi
 
 for (( i=1; i<=$num_senders; i++ ))
 do	
-	./sender$remytype cctype=$cctype if=$ratname serverip=$serverip sourceip=$sourceip sourceport=0 serverport=$serverport onduration=$onduration offduration=$offduration linkrate=$linkppt >> $outfilename & pid=$!
+	./sender$remytype cctype=$cctype if=$ratname delta=$delta serverip=$serverip sourceip=$sourceip sourceport=0 serverport=$serverport onduration=$onduration offduration=$offduration linkrate=$linkppt >> $outfilename & pid=$!
 	#echo "cctype=$cctype if=$ratname serverip=$serverip sourceip=$sourceip sourceport=0 serverport=$serverport onduration=$onduration offduration=$offduration"
 	pids+=" $pid"
 done
@@ -73,11 +79,11 @@ killall -9 sender$remytype
 if [ $cctype = "kernel" ]
 then
 	sudo killall -9 tcpdump
-	tcptrace -lr /tmp/tcpdump.dat > $outfilename-tcptrace
+	tcptrace -lr /tmp/tcpdump.dat >> $outfilename-tcptrace
 	echo '--------------END OF RUN--------------' >> $outfilename-tcptrace
 else
 	sudo killall -9 tcpdump
-	tcptrace -lr /tmp/controltcpdump.dat > $outfilename-competing-tcptrace
+	tcptrace -lr /tmp/controltcpdump.dat >> $outfilename-competing-tcptrace
 	echo '--------------END OF RUN--------------' >> $outfilename-competing-tcptrace
 fi
 

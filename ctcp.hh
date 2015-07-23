@@ -146,6 +146,9 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
   congctrl.init();
   chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 
+  cout << "Setting measured link rate to 1000" << endl;
+  congctrl.onLinkRateMeasurement(1000);
+
   while ( cur_time < duration ){
     cur_time = current_timestamp( start_time_point );
     assert( _packets_sent >= _largest_ack );
@@ -163,7 +166,7 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
 
         memcpy( buf, &header, sizeof(TCPHeader) );
         socket.senddata( buf, packet_size, NULL );
-        if ( true )
+        if ( i == 0 )
           congctrl.onPktSent( header.seq_num );
 
         _packets_sent++;
@@ -171,7 +174,6 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
         cur_time = current_timestamp( start_time_point );
       }
 
-      cur_time = current_timestamp( start_time_point );
       _last_send_time = cur_time;
       seq_num++; // a set of num_packets_per_link_rate_measurement (say 3) are sequence numbered as 3n, 3n+1, 3n+2. This is later used for link rate measurement while receiving packets.
 
@@ -201,6 +203,7 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
       }
       continue;
     }
+    cur_time = current_timestamp( start_time_point );
 
     // Track performance statistics
     delay_sum += cur_time - ack_header.sender_timestamp;
@@ -212,7 +215,6 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
     num_packets_transmitted += 1;
     this->tot_packets_transmitted += 1;
 
-    cur_time = current_timestamp( start_time_point );
 
     // measure link speed
     assert( num_packets_per_link_rate_measurement > 0 );
@@ -242,8 +244,8 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
             // NUM_PACKETS_PER_LINK_RATE_MEASUREMENT is treated as one packet 
             // as far as the congestion control protocol is concerned. This 
             // must be compensated for in the CC, for example in RemyCC
-            //congctrl.onACK( first_packet_in_group_ack_header.seq_num, 
-             // first_packet_in_group_ack_header.receiver_timestamp );
+            congctrl.onACK( first_packet_in_group_ack_header.seq_num, 
+              first_packet_in_group_ack_header.receiver_timestamp );
           }
         }
       }
@@ -253,14 +255,16 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
         link_rate_measurement_accumulator = 0;
         latest_ack_time_in_group = cur_time;
         first_packet_in_group_ack_header = ack_header;
+        //congctrl.onACK( first_packet_in_group_ack_header.seq_num, first_packet_in_group_ack_header.receiver_timestamp );
       }
     }
     else{
       #ifdef SCALE_SEND_RECEIVE_EWMA
           assert(false);
       #endif
+      congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
     }
-    congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
+    //congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
 
     
     _largest_ack = max(_largest_ack, ack_header.seq_num);

@@ -6,6 +6,7 @@
 #include "ctcp.hh"
 #include "kernelTCP.hh"
 //#include "pcc-tcp.hh"
+#include "nashcc.hh"
 #include "traffic-generator.hh"
 
 // see configs.hh for details
@@ -21,8 +22,9 @@ int main( int argc, char *argv[] ){
 	string serverip="", sourceip="";
 	int serverport=8888, sourceport=0;
 	int offduration=5000, onduration=5000;
+	double delta=1.0;
 
-	enum CCType { REMYCC, TCPCC, KERNELCC, PCC } cctype = REMYCC;
+	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC } cctype = REMYCC;
 
 	for ( int i = 1; i < argc; i++ ) {
 		std::string arg( argv[ i ] );
@@ -71,6 +73,8 @@ int main( int argc, char *argv[] ){
 			LINK_LOGGING_FILENAME = arg.substr( 8 );
 			LINK_LOGGING = true;
 		}
+		else if( arg.substr( 0, 6 ) == "delta=" )
+			delta = atof( arg.substr( 6 ).c_str() );
 		else if( arg.substr( 0, 7 ) == "cctype=" ) {
 			std::string cctype_str = arg.substr( 7 );
 			if( cctype_str == "remy" )
@@ -81,6 +85,8 @@ int main( int argc, char *argv[] ){
 				cctype = CCType::KERNELCC;
 			else if ( cctype_str == "pcc" )
 				cctype = CCType::PCC;
+			else if ( cctype_str == "nash" )
+				cctype = CCType::NASHCC;
 			else
 				fprintf( stderr, "Unrecognised congestion control protocol '%s'.\n", cctype_str.c_str() );
 		}
@@ -90,7 +96,7 @@ int main( int argc, char *argv[] ){
 	}
 
 	if ( serverip == "" || sourceip == ""){
-		fprintf( stderr, "Usage: sender serverip=(ipaddr) if=(ratname) sourceip=(ipaddr) [serverport=(port)] [sourceport=(port)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc] [linkrate=(packets/sec)] [linklog=filename]\n");
+		fprintf( stderr, "Usage: sender serverip=(ipaddr) sourceip=(ipaddr) [if=(ratname)] [delta=(for NashCC)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc|nash] [linkrate=(packets/sec)] [linklog=filename][serverport=(port)] [sourceport=(port)]\n");
 		exit(1);
 	}
 
@@ -125,6 +131,13 @@ int main( int argc, char *argv[] ){
 		// PCC_TCP connection( serverip, serverport );
 		// TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
 		// traffic_generator.spawn_senders( 1 );
+	}
+	else if ( cctype == CCType::NASHCC ){
+		fprintf( stdout, "Using NashCC\n" );
+		NashCC congctrl( delta );
+		CTCP< NashCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
+		TrafficGenerator<CTCP<NashCC>> traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		traffic_generator.spawn_senders( 1 );
 	}
 	else{
 		assert( false );
