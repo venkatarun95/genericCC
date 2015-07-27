@@ -1,7 +1,7 @@
 import os
 import re
 
-def parse_file(filename, endpt_name="csail.mit.edu", dst_endpt_name="csail.mit.edu", print_csv=True):
+def parse_file(filename, endpt_name="csail.mit.edu", dst_endpt_name="csail.mit.edu", print_csv=False):
   """Return a list of dictionaries.
 
     Keyword arguments:

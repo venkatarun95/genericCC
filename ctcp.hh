@@ -146,9 +146,6 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
   congctrl.init();
   chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 
-  cout << "Setting measured link rate to 1000" << endl;
-  congctrl.onLinkRateMeasurement(1000);
-
   while ( cur_time < duration ){
     cur_time = current_timestamp( start_time_point );
     assert( _packets_sent >= _largest_ack );
