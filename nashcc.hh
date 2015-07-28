@@ -22,6 +22,7 @@ private:
 	std::map<int, double> unacknowledged_packets;
 	
 	double min_rtt;
+	unsigned int num_pkts_since_last_min_rtt_update;
 	// the rtts are really the queueing delay (ie. measured_rtt - min_rtt)
 	double rtt_acked_ewma;  // estimated using only acked packets
 	double rtt_unacked_ewma; // unacked packets are also considered
@@ -35,6 +36,14 @@ private:
 
 	PRNG prng;
 	std::chrono::high_resolution_clock::time_point start_time_point;
+
+	// a pkt is considered lost if a gap appears in acks
+	unsigned int num_pkts_lost;
+	// to calculate % lost pkts
+	unsigned int num_pkts_acked;
+
+	// rounds double values to minimize floating pt. effects
+	static void round(double& val);
 	
 	// return a timestamp in milliseconds
 	double current_timestamp();
@@ -48,6 +57,7 @@ public:
 		delta( s_delta ),
 		unacknowledged_packets(),
 		min_rtt(),
+		num_pkts_since_last_min_rtt_update(),
 		rtt_acked_ewma(),
 		rtt_unacked_ewma(),
 		intersend_ewma(),
@@ -55,7 +65,9 @@ public:
 		rtt_acked_ewma_last_update(),
 		intersend_ewma_last_update(),
 		prng(current_timestamp()),
-		start_time_point()
+		start_time_point(),
+		num_pkts_lost(),
+		num_pkts_acked()
 	{}
 
 	// callback functions for packet events
