@@ -22,6 +22,7 @@ def create_trace_file(speed, outfile_name):
 def single_mahimahi_run(
 	minrtt, 
 	linkrate, 
+	delta,
 	numsenders, 
 	ratname, 
 	training_linkrate,
@@ -29,15 +30,18 @@ def single_mahimahi_run(
 	output_directory):
 	assert(type(minrtt) is float) # in ms
 	assert(type(linkrate) is float) # in MBps
+	assert(type(delta) is float and delta > 0.0)
 	assert(type(numsenders) is int)
 	assert(type(ratname) is str)
 	assert(type(training_linkrate) is float) # in MBps
-	assert(cctype in ['remy', 'kernel'])
+	assert(cctype in ['remy', 'kernel', 'nash'])
 	assert(os.path.isdir(output_directory))
 
 	ratname_nice = ratname.split('/')[-1].split('-linkppt')[0]
 	if cctype == 'kernel':
 		ratname_nice = 'cubic'
+	if cctype == 'nash':
+		ratname_nice = 'nash' + str(delta)
 	out_filename = 'rawout-' + ratname_nice + '-' + str(linkrate) + '-' \
 					+ str(minrtt) + '-' + str(numsenders)
 	out_filename = os.path.join(output_directory, out_filename)
@@ -47,8 +51,9 @@ def single_mahimahi_run(
 	runstr = 'mm-delay ' + str(int(minrtt/2)) \
 			+ ' mm-link /tmp/linkshell-trace /tmp/linkshell-trace ' \
 			+ 'sudo ./run-senders-parallel.sh ingress 100.64.0.1 8888 ' \
-			+ cctype + ' ' + ratname + ' 1 ' + str(numsenders) + ' ' \
-			+ str(training_linkrate) + ' 0 ' + out_filename
+			+ cctype + ' ' + ratname + ' ' + str(delta) + ' ' \
+			+ str(numsenders) + ' ' + str(training_linkrate) + ' 0 ' \
+			+ out_filename
 
 	os.system(runstr)
 
@@ -62,7 +67,7 @@ def single_remysim_run(
 	assert(type(linkrate) is float) # in MBps
 	assert(type(numsenders) is int)
 	assert(type(ratname) is str)
-	assert(os.path.isdir(output_directory))
+	assert(os.path.isdir(output_directory) or cctype != 'remy')
 
 	ratname_nice = ratname.split('/')[-1].split('-linkppt')[0]
 	out_filename = 'rawout-remysim-' + ratname_nice + '-' + str(linkrate) + '-' \
@@ -100,6 +105,7 @@ def conduct_expt(args):
 			single_mahimahi_run(
 				rtt, 
 				linkrate, 
+				args.delta,
 				args.num_senders, 
 				args.ratname, 
 				1.0,	# currently not supporting link rate normalization
@@ -129,6 +135,7 @@ if __name__ == '__main__':
     argparser.add_argument('--expt_type', type=str, help="One of 'remysim' or 'mahimahi'")
     argparser.add_argument('--minrtt', type=float, default=150.0, help="Minimum possible rtt in link in ms")
     argparser.add_argument('--linkrate', type=float, default=4.0, help="Link rate in MBps")
+    argparser.add_argument('--delta', type=float, default=1.0, help="Delta for NashCC")
     argparser.add_argument('--num_senders', type=int, default=2, help="Number of senders")
     argparser.add_argument('--cctype', type=str, default='remy', help="Should be one of 'remy' and 'kernel'")
     cmd_line_args = argparser.parse_args()

@@ -33,9 +33,9 @@ numkernels=$9
 outfilename=${10}
 
 remytype=
-onduration=0
-offduration=60000
-echo "Running for weird time"
+onduration=5000
+offduration=5000
+echo "Running for 5000ms"
 
 echo "Running for $num_senders sender(s)"
 echo "prober $serverip $sourceip $serverport $outfilename-prober"

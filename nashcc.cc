@@ -29,7 +29,7 @@ void NashCC::init() {
 	rtt_acked_ewma = rtt_unacked_ewma = intersend_ewma = 0.0;
 	rtt_acked_ewma_last_update = intersend_ewma_last_update = 0.0;
 
-	_intersend_time = 100;
+	_intersend_time = 20;
 	prev_ack_sent_time = 0.0;
 
 	_the_window = numeric_limits<int>::max();//10;
@@ -50,8 +50,9 @@ void NashCC::update_intersend_time() {
 	double tmp = _intersend_time;
 	_intersend_time = (delta + 1) / (1.0/rtt_ewma + 1.0/intersend_ewma);
 	if (num_pkts_since_last_min_rtt_update < 10)
-		_intersend_time = max(_intersend_time, tmp); // to avoid bursts due tp min_rtt updates
+	 	_intersend_time = max(_intersend_time, tmp); // to avoid bursts due tp min_rtt updates
 	round(intersend_ewma);
+	//cout << "Update: " << rtt_ewma << " " << intersend_ewma << endl;
 	
 	//Exponential dist(_intersend_time, prng);
 	//_intersend_time = dist.sample();
@@ -70,8 +71,12 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 	double sent_time = unacknowledged_packets[seq_num];
 	double cur_time = current_timestamp();
 	if (cur_time - sent_time < min_rtt){
+		if (min_rtt != numeric_limits<double>::max()) {
+			rtt_acked_ewma += min_rtt - (cur_time - sent_time);
+			rtt_unacked_ewma += min_rtt - (cur_time - sent_time);
+		}
 		min_rtt = cur_time - sent_time;
-		num_pkts_since_last_min_rtt_update = 0;
+		//num_pkts_since_last_min_rtt_update = 0;
 	}
 	++ num_pkts_since_last_min_rtt_update;
 
@@ -137,7 +142,7 @@ void NashCC::onPktSent(int seq_num) {
 			ewma_factor = pow(alpha_rtt, 
 				(cur_time-rtt_acked_ewma_last_update) / min_rtt);
 
-		if (rtt_acked_ewma != 0)
+		//if (rtt_acked_ewma != 0)
 			rtt_unacked_ewma = ewma_factor * rtt_lower_bound \
 				+ (1 - ewma_factor) * rtt_acked_ewma;
 		// else 

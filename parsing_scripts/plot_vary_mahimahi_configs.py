@@ -134,6 +134,12 @@ def plot_data(mahimahi_directory, remysim_directory, vary_link, delta=1):
 		(?P<minrtt>[0-9.]+)-
 		(?P<numsenders>[0-9]+)-tcptrace$
 	""", re.VERBOSE)
+	re_mahimahi_nash_name = re.compile(r"""
+		rawout-(?P<ratname>nash[0-9.]*)-
+		(?P<linkrate>[0-9.]+)-
+		(?P<minrtt>[0-9.]+)-
+		(?P<numsenders>[0-9]+)$
+	""", re.VERBOSE)
 	re_remysim_name = re.compile(r"""
 		rawout-remysim-(?P<ratname>.*)-
 		(?P<linkrate>[0-9.]+)-
@@ -159,6 +165,9 @@ def plot_data(mahimahi_directory, remysim_directory, vary_link, delta=1):
 		elif filename.find('cubic') != -1:
 			match = re_mahimahi_kernel_name.match(filename.split('/')[-1])
 			remysim = False
+		elif filename.find('nash') != -1:
+			match = re_mahimahi_nash_name.match(filename.split('/')[-1])
+			remysim = False
 		else:
 			match = re_mahimahi_name.match(filename.split('/')[-1])
 			remysim = False
@@ -166,8 +175,9 @@ def plot_data(mahimahi_directory, remysim_directory, vary_link, delta=1):
 			continue
 
 		linkrate, minrtt = match.group('linkrate'), match.group('minrtt')
-		ratname = match.group('ratname') + ('', '-remysim')[remysim]
-		
+		ratname = match.group('ratname') + ('', '-remysim')[remysim] + ' ' + match.group('numsenders') + 'senders'
+		print ratname, linkrate, minrtt
+
 		if filename.find('remysim') != -1 or filename.find('us-') != -1:
 			print "Ignoring ", filename
 			continue
@@ -206,6 +216,7 @@ def plot_data(mahimahi_directory, remysim_directory, vary_link, delta=1):
 			throughput /= 1e6 * float(linkrate) # convert to MBps and normalize
 			throughput *= 1500.0 / 1468.0 # compensate for differences in data sizes
 			delay -= float(minrtt)
+			#delay /= float(minrtt)
 
 		utility = math.log(throughput, 10) - delta*math.log(delay, 10)
 
@@ -252,9 +263,12 @@ def plot_data(mahimahi_directory, remysim_directory, vary_link, delta=1):
 			continue
 		plt.plot(x, y, colors[color_ctr], alpha=0.8, label=rat)
 		color_ctr += 1
-	plt.xlabel('Link rate (Mbps)')
-	plt.ylabel('Utility ns2')
-	#plt.xscale('log')
+	if vary_link:
+		plt.xlabel('Link rate (Mbps)')
+		plt.xscale('log')
+	else:
+		plt.xlabel('Min. RTT (ms)')
+	plt.ylabel('Utility (mahimahi)')
 	plt.legend(loc='lower center', bbox_to_anchor=(0.5, 0))
 	plt.show()
 
@@ -271,9 +285,12 @@ def plot_data(mahimahi_directory, remysim_directory, vary_link, delta=1):
 			continue
 		plt.plot(x, y, colors[color_ctr], alpha=0.8, label=rat)
 		color_ctr += 1
-	plt.xlabel('Link rate (Mbps)')
-	plt.ylabel('Utility mahimahi')
-	#plt.xscale('log')
+	if vary_link:
+		plt.xlabel('Link rate (Mbps)')
+		plt.xscale('log')
+	else:
+		plt.xlabel('Min. RTT (ms)')
+	plt.ylabel('Utility (ns2)')
 	plt.legend(loc='lower center', bbox_to_anchor=(0.5, 0))
 	plt.show()
 
