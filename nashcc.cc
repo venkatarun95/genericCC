@@ -22,10 +22,10 @@ void NashCC::init() {
 	if (num_pkts_acked != 0)
 		cout << "%% Packets lost: " << (100.0*num_pkts_lost)/(num_pkts_acked+num_pkts_lost) << endl;
 	unacknowledged_packets.clear();
+	delta_history.clear();
 
 	// check note in onPktSent before changing
 	min_rtt = numeric_limits<double>::max(); 
-	num_pkts_since_last_min_rtt_update = 0;
 	rtt_acked_ewma = rtt_unacked_ewma = intersend_ewma = 0.0;
 	rtt_acked_ewma_last_update = intersend_ewma_last_update = 0.0;
 
@@ -49,7 +49,7 @@ void NashCC::update_intersend_time() {
 
 	double tmp = _intersend_time;
 	_intersend_time = (delta + 1) / (1.0/rtt_ewma + 1.0/intersend_ewma);
-	if (num_pkts_since_last_min_rtt_update < 10)
+	if (num_pkts_acked < 10)
 	 	_intersend_time = max(_intersend_time, tmp); // to avoid bursts due tp min_rtt updates
 	round(intersend_ewma);
 	//cout << "Update: " << rtt_ewma << " " << intersend_ewma << endl;
@@ -76,9 +76,7 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 			rtt_unacked_ewma += min_rtt - (cur_time - sent_time);
 		}
 		min_rtt = cur_time - sent_time;
-		//num_pkts_since_last_min_rtt_update = 0;
 	}
-	++ num_pkts_since_last_min_rtt_update;
 
 	double ewma_factor = 1;
 	if (rtt_acked_ewma != 0.0) {
@@ -104,6 +102,16 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 	intersend_ewma_last_update = cur_time;
 	prev_ack_sent_time = sent_time;
 
+	// adjust delta
+	if (mode == UtilityMode::MAX_DELAY && num_pkts_acked >= 10) {
+		if (rtt_acked_ewma > params.max_delay.queueing_delay_limit) {
+			delta = delta_history[seq_num] + 0.1;
+		}
+		else {
+			delta = delta_history[seq_num] - 0.01;
+		}
+		delta = max(0.01, delta);
+	}
 	// delete this pkt and any unacknowledged pkts before this pkt
 	for (auto x : unacknowledged_packets) {
 		if(x.first > seq_num)
@@ -113,11 +121,13 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 			cout << "Lost: " << seq_num << " " << x.first << " " << cur_time - sent_time << " " << _intersend_time << endl;
 		}
 		unacknowledged_packets.erase(x.first);
+		delta_history.erase(x.first);
 	}
 	++ num_pkts_acked;
 
 	if (_the_window < numeric_limits<int>::max())
 		_the_window = numeric_limits<int>::max();
+
 	// cout << "Got: \t\t\t\t\t" << cur_time << " " << rtt_acked_ewma << " " << _intersend_time << " " << cur_time - sent_time << " " << min_rtt << endl << flush;
 }
 
@@ -130,6 +140,10 @@ void NashCC::onPktSent(int seq_num) {
 	assert( unacknowledged_packets.count( seq_num ) == 0 );
 	double cur_time = current_timestamp();
 	unacknowledged_packets[seq_num] = cur_time;
+
+	// add to delta_history
+	assert( delta_history.count( seq_num ) == 0 );
+	delta_history[seq_num] = delta;
 
 	// check if rtt_ewma is to be increased
 	double rtt_lower_bound = cur_time - min_rtt \

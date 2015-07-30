@@ -9,8 +9,23 @@
 #include "exponential.hh"
 
 class NashCC : public CCC { 
+public:
+	enum UtilityMode {CONSTANT_DELTA, MAX_DELAY};
+
 private:
-	double delta = 1;
+	union NashCCParams {
+		struct {
+			double delta;
+		} constant_delta;
+		struct {
+			const double alpha_rtt = 1.0/256.0;
+			double queueing_delay_limit; // in ms
+		} max_delay;
+	} params;
+
+	UtilityMode mode;
+
+	double delta;
 	const double alpha_rtt = 1.0/16.0;
 	const double alpha_intersend = 1.0/16.0;
 
@@ -20,9 +35,13 @@ private:
 	// sequence number is acked. This set contains only the packets 
 	// which are NOT lost
 	std::map<int, double> unacknowledged_packets;
+	// Format: (seq_num, delta)
+	//
+	// The delta corresponds to the delta in the CC protocol when that
+	// packet was transmitted
+	std::map<int, double> delta_history;
 	
 	double min_rtt;
-	unsigned int num_pkts_since_last_min_rtt_update;
 	// the rtts are really the queueing delay (ie. measured_rtt - min_rtt)
 	double rtt_acked_ewma;  // estimated using only acked packets
 	double rtt_unacked_ewma; // unacked packets are also considered
@@ -52,12 +71,14 @@ private:
 	void update_intersend_time();
 
 public:
-	NashCC( double s_delta ) 
+	NashCC( UtilityMode s_mode, double param1 ) 
 	: 	CCC(), 
-		delta( s_delta ),
+		params{},
+		mode(),
+		delta(),
 		unacknowledged_packets(),
+		delta_history(),
 		min_rtt(),
-		num_pkts_since_last_min_rtt_update(),
 		rtt_acked_ewma(),
 		rtt_unacked_ewma(),
 		intersend_ewma(),
@@ -68,7 +89,17 @@ public:
 		start_time_point(),
 		num_pkts_lost(),
 		num_pkts_acked()
-	{}
+	{
+		mode = s_mode;
+		if (mode == UtilityMode::CONSTANT_DELTA) {
+			params.constant_delta.delta = param1;
+			delta = param1;
+		}
+		else if (mode == UtilityMode::MAX_DELAY) {
+			params.max_delay.queueing_delay_limit = param1;
+			delta = 1.0; // will evolve with time
+		}
+	}
 
 	// callback functions for packet events
 	virtual void init() override;
