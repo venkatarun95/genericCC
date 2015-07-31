@@ -32,6 +32,10 @@ void NashCC::init() {
 	_intersend_time = 20;
 	prev_ack_sent_time = 0.0;
 
+	last_rtt = max_rtt = 0.0;
+	while (!rtt_history.empty())
+		rtt_history.pop();
+
 	_the_window = numeric_limits<int>::max();//10;
 	_timeout = 1000;
 
@@ -47,15 +51,34 @@ void NashCC::update_intersend_time() {
 	if (rtt_ewma == 0.0)
 		return; // can happen for first few packets as min_rtt estimate is not precise
 
+	// use predicted instead of measured rtt
+	unsigned int tmp_cur_id = (rtt_ewma / (max_rtt - min_rtt))\
+			* num_markov_chain_states;
+	tmp_cur_id = min(tmp_cur_id, num_markov_chain_states-1); // in case it is called from onPktSent and rtt_unacked_ewma > rtt_acked_ewma
+	//double tmp_max_prob = markov_chain[tmp_cur_id][0];
+	double tmp_rtt_prediction =  0.5 * (max_rtt - min_rtt) \
+				/ num_markov_chain_states;
+	unsigned int tmp_i __attribute((unused))= 0;
+	for (unsigned int i = 0;i < num_markov_chain_states; i++) {
+		/*if (markov_chain[tmp_cur_id][i] > tmp_max_prob) {
+			tmp_rtt_prediction = (i + 0.5) * (max_rtt - min_rtt) \
+				/ num_markov_chain_states;
+			tmp_i = i;
+		}*/
+		tmp_rtt_prediction += markov_chain[tmp_cur_id][i]*(i + 0.5) 
+			* (max_rtt - min_rtt) / num_markov_chain_states;
+	}
+	// if (tmp_i != tmp_cur_id)
+	// 	cout << rtt_ewma << " " << tmp_rtt_prediction << " " << tmp_rtt_prediction - rtt_ewma << endl;
+	//cout << rtt_ewma << " " << tmp_rtt_prediction << " " << _intersend_time << " " << intersend_ewma << endl;
+	rtt_ewma = tmp_rtt_prediction;
+	//tmp_rtt_prediction = tmp_rtt_prediction;
+
 	double tmp = _intersend_time;
 	_intersend_time = (delta + 1) / (1.0/rtt_ewma + 1.0/intersend_ewma);
 	if (num_pkts_acked < 10)
 	 	_intersend_time = max(_intersend_time, tmp); // to avoid bursts due tp min_rtt updates
 	round(intersend_ewma);
-	//cout << "Update: " << rtt_ewma << " " << intersend_ewma << endl;
-	
-	//Exponential dist(_intersend_time, prng);
-	//_intersend_time = dist.sample();
 }
 
 void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
@@ -67,9 +90,21 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 	if ( unacknowledged_packets.count( seq_num ) < 1 ) { 
 		std::cerr<<"Unknown Ack!! "<<seq_num<<std::endl; return; }
 
-	// update rtt_acked_ewma
-	double sent_time = unacknowledged_packets[seq_num];
+		double sent_time = unacknowledged_packets[seq_num];
 	double cur_time = current_timestamp();
+
+	// before updaing min and max rtt, reset markov chain if either changes
+	if (min_rtt > cur_time - sent_time || max_rtt < cur_time - sent_time) {
+		if (cur_time < 10000.0) {
+			for (unsigned int i = 0;i < num_markov_chain_states; i++) {
+				for (auto & x : markov_chain[i])
+					x = 0.0;
+				markov_chain[i][i] = 1.0;
+			}
+		}
+	}
+
+	// update min and max rtt
 	if (cur_time - sent_time < min_rtt){
 		if (min_rtt != numeric_limits<double>::max()) {
 			rtt_acked_ewma += min_rtt - (cur_time - sent_time);
@@ -77,7 +112,9 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 		}
 		min_rtt = cur_time - sent_time;
 	}
+	max_rtt = max(max_rtt, cur_time - sent_time);
 
+	// update rtt_acked_ewma
 	double ewma_factor = 1;
 	if (rtt_acked_ewma != 0.0) {
 		ewma_factor = pow(alpha_rtt, 
@@ -102,6 +139,28 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 	intersend_ewma_last_update = cur_time;
 	prev_ack_sent_time = sent_time;
 
+	// manage rtt_history
+	while (!rtt_history.empty() && rtt_history.front().first \
+		< sent_time - max(rtt_acked_ewma, rtt_unacked_ewma) - min_rtt)
+		rtt_history.pop();
+	rtt_history.push(make_pair(cur_time, cur_time - sent_time - min_rtt));
+	double tmp_last_rtt = rtt_history.front().second;
+
+	// update markov chain's transition matrix
+	if (num_pkts_acked > 10) { // ideally this should be 10 pkts after last change in min_rtt
+		unsigned int tmp_last_id = min((unsigned int)((tmp_last_rtt / (max_rtt - min_rtt)) \
+			* num_markov_chain_states), num_markov_chain_states-1);
+		unsigned int tmp_cur_id = min((unsigned int)(((cur_time - sent_time - min_rtt) \
+			/ (max_rtt - min_rtt)) * num_markov_chain_states), \
+			num_markov_chain_states-1);
+		for (auto & x : markov_chain[tmp_last_id]){
+			x *= (1.0 - alpha_markov_chain);
+		}
+		markov_chain[tmp_last_id][tmp_cur_id] += alpha_markov_chain * 1;
+		//cout << "Changing " << tmp_last_id << " to " << tmp_cur_id << " " << tmp_last_rtt << " " << << endl;
+	}
+	last_rtt = cur_time - sent_time - min_rtt;
+
 	// adjust delta
 	if (mode == UtilityMode::MAX_DELAY && num_pkts_acked >= 10) {
 		if (rtt_acked_ewma > params.max_delay.queueing_delay_limit) {
@@ -112,13 +171,27 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 		}
 		delta = max(0.01, delta);
 	}
+	// static int last_tnsmit = 0;
+	// if (int(cur_time/1000.0) % 10 == 0 && last_tnsmit != int(cur_time/1000.0)) {
+	// 	for (auto & x : markov_chain){
+	// 		double max_val = x[0];
+	// 		for (auto & y : x)
+	// 			max_val = max(max_val, y);
+	// 		for (auto & y : x)
+	// 			cout << ((y == max_val)?y:0) << " ";
+	// 		cout << endl;
+	// 	}
+	// 	cout << min_rtt << " " << max_rtt << endl;
+	// 	last_tnsmit = int(cur_time/1000.0);
+	// }
+
 	// delete this pkt and any unacknowledged pkts before this pkt
 	for (auto x : unacknowledged_packets) {
 		if(x.first > seq_num)
 			break;
 		if(x.first < seq_num) {
 			++ num_pkts_lost;
-			cout << "Lost: " << seq_num << " " << x.first << " " << cur_time - sent_time << " " << _intersend_time << endl;
+			//cout << "Lost: " << seq_num << " " << x.first << " " << cur_time - sent_time << " " << _intersend_time << endl;
 		}
 		unacknowledged_packets.erase(x.first);
 		delta_history.erase(x.first);
