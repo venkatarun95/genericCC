@@ -89,6 +89,9 @@ private:
 	// update intersend time based on rtt ewma and intersend ewma
 	void update_intersend_time();
 
+	// delta updating functions for various utility modes
+	void delta_update_max_delay(double rtt, double cur_time);
+
 public:
 	NashCC( UtilityMode s_mode, double param1 ) 
 	: 	CCC(), 

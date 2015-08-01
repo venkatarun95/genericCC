@@ -68,7 +68,6 @@ void NashCC::update_intersend_time() {
 		tmp_rtt_prediction += markov_chain[tmp_cur_id][i]*(i + 0.5) 
 			* (max_rtt - min_rtt) / num_markov_chain_states;
 	}
-	// if (tmp_i != tmp_cur_id)
 	// 	cout << rtt_ewma << " " << tmp_rtt_prediction << " " << tmp_rtt_prediction - rtt_ewma << endl;
 	//cout << rtt_ewma << " " << tmp_rtt_prediction << " " << _intersend_time << " " << intersend_ewma << endl;
 	rtt_ewma = tmp_rtt_prediction;
@@ -79,6 +78,48 @@ void NashCC::update_intersend_time() {
 	if (num_pkts_acked < 10)
 	 	_intersend_time = max(_intersend_time, tmp); // to avoid bursts due tp min_rtt updates
 	round(intersend_ewma);
+}
+
+void NashCC::delta_update_max_delay(double rtt, double cur_time) {
+	assert(mode == UtilityMode::MAX_DELAY);
+	static double last_delta_update_time = 0.0;
+	static double average_rtt = 0.0;
+	static unsigned int num_rtt_measurements = 0;
+
+	static double average_delta = delta;
+	const double alpha_average_delta = 1/64.0;
+	
+	//cout << last_delta_update_time << " " << average_rtt << " " << num_rtt_measurements << " " << cur_time << endl;
+	if (num_pkts_acked < 10)
+		return;
+
+	if (last_delta_update_time == 0.0)
+		last_delta_update_time = cur_time;
+
+	average_rtt += rtt;
+	++ num_rtt_measurements;
+
+	if (last_delta_update_time < cur_time - 2*rtt) {
+		last_delta_update_time = cur_time;
+		average_rtt /= num_rtt_measurements;
+
+		if (average_rtt < params.max_delay.queueing_delay_limit) {
+			delta -= 0.01;
+			average_delta = delta * alpha_average_delta \
+				+ average_delta * (1.0 - alpha_average_delta);
+		}
+		else {
+			delta += 0.01;
+		}
+
+		delta = 0.9*delta + 0.1*average_delta;
+
+		delta = max(0.01, delta);
+
+		//cerr << endl << delta << " " << average_rtt << endl;
+		average_rtt = 0.0;
+		num_rtt_measurements = 0.0;
+	}
 }
 
 void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
@@ -162,14 +203,9 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 	last_rtt = cur_time - sent_time - min_rtt;
 
 	// adjust delta
-	if (mode == UtilityMode::MAX_DELAY && num_pkts_acked >= 10) {
-		if (rtt_acked_ewma > params.max_delay.queueing_delay_limit) {
-			delta = delta_history[seq_num] + 0.1;
-		}
-		else {
-			delta = delta_history[seq_num] - 0.01;
-		}
-		delta = max(0.01, delta);
+	//cout << cur_time - sent_time - min_rtt << " " << min_rtt << " " << intersend_ewma << endl;
+	if (mode == UtilityMode::MAX_DELAY) {
+		delta_update_max_delay(cur_time - sent_time, cur_time);
 	}
 	// static int last_tnsmit = 0;
 	// if (int(cur_time/1000.0) % 10 == 0 && last_tnsmit != int(cur_time/1000.0)) {
