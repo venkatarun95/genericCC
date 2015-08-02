@@ -9,6 +9,7 @@
 
 #include "ccc.hh"
 #include "exponential.hh"
+#include "utilities.hh"
 
 class NashCC : public CCC { 
 public:
@@ -28,6 +29,8 @@ private:
 	UtilityMode mode;
 
 	double delta;
+
+	// some adjustable parameters
 	const double alpha_rtt = 1.0/16.0;
 	const double alpha_intersend = 1.0/16.0;
 	const double alpha_markov_chain = 1.0/16.0;
@@ -47,17 +50,15 @@ private:
 	
 	double min_rtt;
 	// the rtts are really the queueing delay (ie. measured_rtt - min_rtt)
-	double rtt_acked_ewma;  // estimated using only acked packets
-	double rtt_unacked_ewma; // unacked packets are also considered
-	double intersend_ewma;
+	TimeEwma rtt_acked_ewma;  // estimated using only acked packets
+	TimeEwma rtt_unacked_ewma; // unacked packets are also considered
+	TimeEwma intersend_ewma;
 	// send time of previous ack. Used to calculate intersend time
 	double prev_ack_sent_time;
 
-	// last timepoint at which the various ewmas were updated
-	double rtt_acked_ewma_last_update;
-	double intersend_ewma_last_update;
-
 	PRNG prng;
+
+	// cur_time is measured relative to this
 	std::chrono::high_resolution_clock::time_point start_time_point;
 
 	// (\mu - \bar{\lambda_i})'s Markov chain's transition matrix for
@@ -80,9 +81,6 @@ private:
 	// to calculate % lost pkts
 	unsigned int num_pkts_acked;
 
-	// rounds double values to minimize floating pt. effects
-	static void round(double& val);
-	
 	// return a timestamp in milliseconds
 	double current_timestamp();
 
@@ -101,15 +99,14 @@ public:
 		unacknowledged_packets(),
 		delta_history(),
 		min_rtt(),
-		rtt_acked_ewma(),
-		rtt_unacked_ewma(),
-		intersend_ewma(),
+		rtt_acked_ewma(alpha_rtt),
+		rtt_unacked_ewma(alpha_rtt),
+		intersend_ewma(alpha_intersend),
 		prev_ack_sent_time(),
-		rtt_acked_ewma_last_update(),
-		intersend_ewma_last_update(),
 		prng(current_timestamp()),
 		start_time_point(),
-		markov_chain(num_markov_chain_states, std::vector<double>(num_markov_chain_states, 0.0)),
+		markov_chain(num_markov_chain_states, 
+			std::vector<double>(num_markov_chain_states, 0.0)),
 		last_rtt(),
 		max_rtt(),
 		rtt_history(),
