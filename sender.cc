@@ -5,7 +5,7 @@
 #include "remycc.hh"
 #include "ctcp.hh"
 #include "kernelTCP.hh"
-//#include "pcc-tcp.hh"
+#include "pcc-tcp.hh"
 #include "nashcc.hh"
 #include "traffic-generator.hh"
 
@@ -22,7 +22,8 @@ int main( int argc, char *argv[] ){
 	string serverip="", sourceip="";
 	int serverport=8888, sourceport=0;
 	int offduration=5000, onduration=5000;
-	double delta=1.0;
+	double delta=1.0, max_delay=-1.0;
+	NashCC::UtilityMode nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
 
 	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC } cctype = REMYCC;
 
@@ -75,6 +76,12 @@ int main( int argc, char *argv[] ){
 		}
 		else if( arg.substr( 0, 6 ) == "delta=" )
 			delta = atof( arg.substr( 6 ).c_str() );
+		else if( arg.substr( 0, 10 ) == "max_delay=" )
+			max_delay = atof( arg.substr( 10 ).c_str() );
+		else if( arg == "constant_delta" )
+			nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
+		else if( arg == "max_delay" )
+			nashcc_utility_mode = NashCC::UtilityMode::MAX_DELAY;
 		else if( arg.substr( 0, 7 ) == "cctype=" ) {
 			std::string cctype_str = arg.substr( 7 );
 			if( cctype_str == "remy" )
@@ -127,14 +134,23 @@ int main( int argc, char *argv[] ){
 	}
 	else if ( cctype == CCType::PCC ){
 		fprintf( stdout, "Using PCC.\n");
-		assert( false );
-		// PCC_TCP connection( serverip, serverport );
-		// TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
-		// traffic_generator.spawn_senders( 1 );
+		PCC_TCP connection( serverip, serverport );
+		TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		traffic_generator.spawn_senders( 1 );
 	}
 	else if ( cctype == CCType::NASHCC ){
-		fprintf( stdout, "Using NashCC\n" );
-		NashCC congctrl( delta );
+		double param = delta;
+		if (nashcc_utility_mode == NashCC::UtilityMode::MAX_DELAY) {
+			if (max_delay == -1.0){
+				fprintf(stderr, "Please specify max_delay for this mode\n");
+				exit(1);
+			}
+			param = max_delay;
+			fprintf( stdout, "Using NashCC in MAX_DELAY mode.\n" );
+		}
+		else
+			fprintf( stdout, "Using NashCC in CONSTANT_DELTA mode.\n" );
+		NashCC congctrl( nashcc_utility_mode, param );
 		CTCP< NashCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
 		TrafficGenerator<CTCP<NashCC>> traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
 		traffic_generator.spawn_senders( 1 );
