@@ -82,6 +82,7 @@ void NashCC::delta_update_max_delay(double rtt, double cur_time) {
 	static double last_delta_update_time = 0.0;
 	static double average_rtt = 0.0;
 	static unsigned int num_rtt_measurements = 0;
+	static double last_delta_update = 0;
 
 	if (num_pkts_acked < 10)
 		return;
@@ -97,18 +98,21 @@ void NashCC::delta_update_max_delay(double rtt, double cur_time) {
 		average_rtt /= num_rtt_measurements;
 
 		if (average_rtt < params.max_delay.queueing_delay_limit) {
-			delta -= 0.1;
+			// delta -= 0.1;
+			last_delta_update -= 0.1;
 		}
 		else {
-			delta += 0.1;
+			// delta += 0.1;
+			last_delta_update += 0.1;
 		}
+		delta += last_delta_update;
 
 		//delta = 0.9*delta + 0.1*average_delta;
 		delta = max(0.01, delta);
 
 		num_rtt_measurements = 0;
 		average_rtt = 0.0;
-		cout << delta << endl;
+		// cout << delta << endl;
 	}
 }
 
@@ -235,7 +239,18 @@ void NashCC::onPktSent(int seq_num) {
 	delta_history[seq_num] = delta;
 
 	// check if rtt_ewma is to be increased
-	double rtt_lower_bound = cur_time - min_rtt \
+	rtt_unacked_ewma = rtt_acked_ewma;
+	for (auto & x : unacknowledged_packets) {
+		double rtt_lower_bound = cur_time - min_rtt - x.second;
+		if (min_rtt == numeric_limits<double>::max())
+			rtt_lower_bound = cur_time - x.second;
+		if (rtt_lower_bound <= rtt_unacked_ewma)
+			break;
+		rtt_unacked_ewma.update(rtt_lower_bound, cur_time);
+		cout << rtt_lower_bound << " " << rtt_unacked_ewma << " " << rtt_acked_ewma << endl;
+	}
+	rtt_unacked_ewma.round();
+	/*double rtt_lower_bound = cur_time - min_rtt \
 		- unacknowledged_packets.begin()->second;
 	if (min_rtt == numeric_limits<double>::max())
 		rtt_lower_bound = cur_time - unacknowledged_packets.begin()->second;
@@ -246,7 +261,7 @@ void NashCC::onPktSent(int seq_num) {
 		rtt_unacked_ewma.round();
 
 		update_intersend_time(cur_time);
-	}
+	}*/
 
 	// cout << "Sent: " << cur_time << " " << rtt_acked_ewma << " " << _intersend_time << endl;
 }
