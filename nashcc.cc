@@ -37,7 +37,7 @@ void NashCC::init() {
 }
 
 void NashCC::update_intersend_time(double cur_time) {
-	bool fast_start_done = false; //set to true after fast start has been performed
+	static bool fast_start_done __attribute((unused)) = false; //set to true after fast start has been performed
 	if (!intersend_ewma.is_valid())
 	 	return;//_intersend_time = (delta + 1) / (1.0/rtt_ewma);
 	double rtt_ewma = max(rtt_unacked_ewma, rtt_acked_ewma);
@@ -49,7 +49,7 @@ void NashCC::update_intersend_time(double cur_time) {
 
 	if (num_pkts_acked < 10)
 	 	_intersend_time = max(_intersend_time, tmp); // to avoid bursts due tp min_rtt updates
-	if (!fast_start_done) { // fast start
+	if (!fast_start_done) { //(num_pkts_acked >= 10 && num_pkts_acked < 20) { //!fast_start_done) {
 		_intersend_time = max(delta, 1.0) * rtt_ewma;
 		intersend_ewma.reset();
 		intersend_ewma.update(_intersend_time, cur_time / min_rtt);
@@ -70,6 +70,8 @@ void NashCC::delta_update_max_delay(double rtt, double cur_time) {
 
 	if (last_delta_update_time == 0.0)
 		last_delta_update_time = cur_time;
+	if (last_delta_update_time > cur_time) // a new connection has been opened
+		last_delta_update_time = cur_time;
 
 	average_rtt += rtt;
 	++ num_rtt_measurements;
@@ -79,17 +81,62 @@ void NashCC::delta_update_max_delay(double rtt, double cur_time) {
 		average_rtt /= num_rtt_measurements;
 
 		if (average_rtt < params.max_delay.queueing_delay_limit) {
-			last_delta_update -= 0.1;
+			last_delta_update -= 0.01;
 		}
 		else {
-			last_delta_update += 0.1;
+			last_delta_update += 0.01;
 		}
 		delta += last_delta_update;
 
 		delta = max(0.01, delta);
+		// cout << delta << " " << average_rtt << endl;
 
 		num_rtt_measurements = 0;
 		average_rtt = 0.0;
+	}
+}
+
+void NashCC::delta_update_generic(double utility, double cur_time) {
+	static double last_delta_update_time = 0.0;
+
+	const double alpha_generic_delta_update = 1.00/8.0;
+	const double max_delta = 10, min_delta = 0;
+	const int num_delta_bins = 32;
+	static vector< TimeEwma > utilities(num_delta_bins, alpha_generic_delta_update);
+	static double sum_utilities;
+
+	if (num_pkts_acked < 10)
+		return;
+
+	if (last_delta_update_time == 0.0)
+		last_delta_update_time = cur_time;
+	if (last_delta_update_time > cur_time) { // a new connection has been opened
+		last_delta_update_time = cur_time;
+		for (auto & x : utilities) {
+			double tmp_prev = x;
+			x.reset();
+			x.update(tmp_prev, cur_time);
+		}
+	}
+
+	if (last_delta_update_time < cur_time - 2*rtt_acked_ewma) {
+		int tmp_i = (delta - min_delta)/(max_delta - min_delta)*num_delta_bins;
+		sum_utilities -= utilities[tmp_i];
+		utilities[tmp_i].update(utility, cur_time);
+		sum_utilities += utilities[tmp_i];
+
+		cout << delta << " " << utilities[tmp_i];
+
+		double max_util = numeric_limits<double>::min();
+		for (unsigned int i = 0;i < utilities.size();i++) {
+			if (utilities[i] > max_util) {
+				delta = double(i) * (max_delta - min_delta) / num_delta_bins;
+				max_util = utilities[i]; 
+			}
+		}
+
+		cout << " " << delta << endl;
+		last_delta_update_time = cur_time;
 	}
 }
 
@@ -130,6 +177,8 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 	// adjust delta
 	if (mode == UtilityMode::MAX_DELAY) {
 		delta_update_max_delay(cur_time - sent_time, cur_time);
+		// delta_update_generic((cur_time - sent_time < 
+		// 	params.max_delay.queueing_delay_limit), cur_time);
 	}
 
 	// delete this pkt and any unacknowledged pkts before this pkt

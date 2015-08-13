@@ -84,7 +84,7 @@ public:
   }
 
   //duration in milliseconds
-  void send_data ( double duration, int flow_id, int src_id );
+  void send_data ( double flow_size, bool byte_switched, int flow_id, int src_id );
 
   void listen_for_data ( );
 };
@@ -106,8 +106,9 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
   return duration_cast<duration<double>>(cur_time_point - start_time_point).count()*1000; //convert to milliseconds, because that is the scale on which the rats have been trained
 }
 
+// takes flow_size in milliseconds (byte_switched=false) or in bytes (byte_switched=true) 
 template<class T>
-void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
+void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int src_id ){
   TCPHeader header, ack_header;
 
   // this is the data that is transmitted. A sizeof(TCPHeader) header followed by a sring of dashes
@@ -146,14 +147,13 @@ void CTCP<T>::send_data( double duration, int flow_id, int src_id ){
   congctrl.init();
   chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 
-  while ( cur_time < duration ){
+  while ( (byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size ){
     cur_time = current_timestamp( start_time_point );
     assert( _packets_sent >= _largest_ack );
     // Warning: The number of unacknowledged packets may exceed the congestion window by num_packets_per_link_rate_measurement
     while ( ( (_packets_sent < _largest_ack + 1 + congctrl.get_the_window()) 
       and (_last_send_time + congctrl.get_intersend_time()*num_packets_per_link_rate_measurement <= cur_time) ) 
-      and cur_time < duration ) {
-      
+      and (byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size ) {
       for (  int i = 0;i < num_packets_per_link_rate_measurement; i++ ) {
         header.seq_num = seq_num * num_packets_per_link_rate_measurement + i;
         header.flow_id = flow_id;

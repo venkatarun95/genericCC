@@ -70,6 +70,7 @@ private:
 
 	// delta updating functions for various utility modes
 	void delta_update_max_delay(double rtt, double cur_time);
+	void delta_update_generic(double utility, double cur_time);
 
 public:
 	NashCC( UtilityMode s_mode, double param1 ) 
