@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
+#include <random>
 
 using namespace std;
 
@@ -97,47 +98,94 @@ void NashCC::delta_update_max_delay(double rtt, double cur_time) {
 }
 
 void NashCC::delta_update_generic(double utility, double cur_time) {
-	static double last_delta_update_time = 0.0;
+	// static double last_delta_update_time = 0.0;
+	// static bool first_run = true;
 
-	const double alpha_generic_delta_update = 1.00/8.0;
-	const double max_delta = 10, min_delta = 0;
-	const int num_delta_bins = 32;
-	static vector< TimeEwma > utilities(num_delta_bins, alpha_generic_delta_update);
-	static double sum_utilities;
+	// const double const_adjusting_factor = 1e-5;
+	// const double alpha_generic_delta_update = 1.00/8.0;
+	// const double max_delta = 10, min_delta = 0;
+	// const int num_delta_bins = 32;
+	// static vector< TimeEwma > utilities(num_delta_bins, TimeEwma(alpha_generic_delta_update));
+	// static double sum_utilities = num_delta_bins * const_adjusting_factor; // add a utility of 1 to each bin to handle the initial case where utilities are 0 and it is difficult to determine which bucket to choose
 
-	if (num_pkts_acked < 10)
-		return;
+	// static std::default_random_engine rnd_generator;
+	// static std::uniform_real_distribution<double> uniform_distribution(0.0, 1.0);
 
-	if (last_delta_update_time == 0.0)
-		last_delta_update_time = cur_time;
-	if (last_delta_update_time > cur_time) { // a new connection has been opened
-		last_delta_update_time = cur_time;
-		for (auto & x : utilities) {
-			double tmp_prev = x;
-			x.reset();
-			x.update(tmp_prev, cur_time);
-		}
-	}
+	// // if (num_pkts_acked < 10)
+	// // 	return;
+	// if (first_run) {
+	// 	first_run = false;
+	// 	for (auto & x : utilities) {
+	// 		x.reset();
+	// 		x.update(1 + const_adjusting_factor, cur_time);
+	// 	}
+	// 	sum_utilities += num_delta_bins;
+	// }
 
-	if (last_delta_update_time < cur_time - 2*rtt_acked_ewma) {
-		int tmp_i = (delta - min_delta)/(max_delta - min_delta)*num_delta_bins;
-		sum_utilities -= utilities[tmp_i];
-		utilities[tmp_i].update(utility, cur_time);
-		sum_utilities += utilities[tmp_i];
+	// if (last_delta_update_time == 0.0) 
+	// 	last_delta_update_time = cur_time;
+	// if (last_delta_update_time > cur_time) { // a new connection has been opened
+	// 	last_delta_update_time = cur_time;
+	// 	for (auto & x : utilities) {
+	// 		double tmp_prev = x;
+	// 		x.reset();
+	// 		x.update(tmp_prev, cur_time);
+	// 	}
+	// }
 
-		cout << delta << " " << utilities[tmp_i];
+	// // if (last_delta_update_time < cur_time - 2*rtt_acked_ewma) {
+	// 	int tmp_i = (delta - min_delta)/(max_delta - min_delta)*num_delta_bins;
+	// 	sum_utilities -= utilities[tmp_i];
+	// 	utilities[tmp_i].update(utility, cur_time);
+	// 	sum_utilities += utilities[tmp_i];
 
-		double max_util = numeric_limits<double>::min();
-		for (unsigned int i = 0;i < utilities.size();i++) {
-			if (utilities[i] > max_util) {
-				delta = double(i) * (max_delta - min_delta) / num_delta_bins;
-				max_util = utilities[i]; 
-			}
-		}
 
-		cout << " " << delta << endl;
-		last_delta_update_time = cur_time;
-	}
+	// 	// double max_util = numeric_limits<double>::min();
+	// 	// for (unsigned int i = 0;i < utilities.size();i++) {
+	// 	// 	if (utilities[i] > max_util) {
+	// 	// 		delta = double(i) * (max_delta - min_delta) / num_delta_bins;
+	// 	// 		max_util = utilities[i]; 
+	// 	// 	}
+	// 	// }
+
+	// 	double tmp_max = numeric_limits<double>::min();
+	// 	double tmp_min = numeric_limits<double>::max();
+	// 	for (auto x : utilities) {
+	// 		tmp_max = max(tmp_max, (double)x);
+	// 		tmp_min = min(tmp_min, (double)x);
+	// 	}
+
+	// 	double tmp_rnd = uniform_distribution(rnd_generator);
+	// 	double cur_bucket = 0.0;
+	// 	cout << "Delta: " <<  delta << " " << utilities[tmp_i] << " " << tmp_rnd*sum_utilities << " ";
+	// 	for (unsigned int i = 0;i < utilities.size();i++) {
+	// 		cur_bucket += utilities[i] + const_adjusting_factor ;//* 
+	// 			// (sum_utilities - tmp_min) / tmp_max; // see explanation for sum_utilities
+	// 		if (tmp_rnd <= cur_bucket) { // * (sum_utilities - tmp_min) / tmp_max) {
+	// 			delta = (double(i) + 0.5) * (max_delta - min_delta) / num_delta_bins;
+	// 			break;
+	// 		}
+	// 	}
+	// 	// discrete_distribution<int> distr(utilities.begin(), utilities.end());
+	// 	// int tmp_id = distr(rnd_generator);
+	// 	// delta = double(tmp_id) * (max_delta - min_delta) / num_delta_bins;
+
+	// 	cout << " " << delta << endl;
+	// 	// for (auto x : utilities)
+	// 	// 	cout << x << " ";
+	// 	// cout << endl;
+	// 	last_delta_update_time = cur_time;
+	// // }
+
+	static double prev_utility = 0;
+	static double prev_change = 0.01;
+	double prev_dir = prev_change / abs(prev_change);
+	if (prev_utility > utility)
+		prev_change -= prev_dir;
+	else
+		prev_change += prev_dir;
+	delta += prev_change;
+	cur_time = cur_time;
 }
 
 void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
@@ -180,6 +228,9 @@ void NashCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
 		// delta_update_generic((cur_time - sent_time < 
 		// 	params.max_delay.queueing_delay_limit), cur_time);
 	}
+	else if (mode == UtilityMode::MIN_FCT) {
+		// Do nothing here. Update when connection is closed.
+	}
 
 	// delete this pkt and any unacknowledged pkts before this pkt
 	for (auto x : unacknowledged_packets) {
@@ -217,4 +268,13 @@ void NashCC::onPktSent(int seq_num) {
 		rtt_unacked_ewma.update(rtt_lower_bound, cur_time);
 	}
 	rtt_unacked_ewma.round();
+}
+
+void NashCC::close() {
+	double cur_time = current_timestamp(); // start_time_point is initialized at init, so this is the flow completion time
+	static double min_fct = numeric_limits<double>::max();
+	min_fct = min(cur_time, min_fct);
+	if (mode == UtilityMode::MIN_FCT)
+		delta_update_generic(1.0/(cur_time - min_fct+0.1), cur_time); // update the delta
+	cout << "FCT: " << cur_time << endl;;
 }
