@@ -13,7 +13,7 @@
 
 class NashCC : public CCC { 
 public:
-	enum UtilityMode {CONSTANT_DELTA, MAX_DELAY};
+	enum UtilityMode {CONSTANT_DELTA, MAX_DELAY, MIN_FCT};
 
 private:
 	union NashCCParams {
@@ -106,6 +106,7 @@ public:
 	virtual void onPktSent(int seq_num) override ;
 	virtual void onTimeout() override { std::cerr << "Ack timed out!\n"; }
 	virtual void onLinkRateMeasurement( double s_measured_link_rate ) override;
+	virtual void close() override;
 };
 
 #endif

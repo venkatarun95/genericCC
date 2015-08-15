@@ -14,14 +14,15 @@ double TRAINING_LINK_RATE = 4000000.0/1500.0;
 bool LINK_LOGGING = false;
 std::string LINK_LOGGING_FILENAME;
 
-int main( int argc, char *argv[] ){
+int main( int argc, char *argv[] ) {
 	Memory temp;
 	WhiskerTree whiskers;
 	bool ratFound = false;
 
-	string serverip="", sourceip="";
+	string serverip = "", sourceip = "";
 	int serverport=8888, sourceport=0;
 	int offduration=5000, onduration=5000;
+	string traffic_params = "";
 	double delta=1.0, max_delay=-1.0;
 	NashCC::UtilityMode nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
 
@@ -30,7 +31,7 @@ int main( int argc, char *argv[] ){
 	for ( int i = 1; i < argc; i++ ) {
 		std::string arg( argv[ i ] );
 		if ( arg.substr( 0, 3 ) == "if=" ) {
-			if( cctype != REMYCC ){
+			if( cctype != REMYCC ) {
 				fprintf( stderr, "Warning: ignoring parameter 'if=' as cctype is not 'remy'.\n" );
 				continue;
 			}
@@ -70,10 +71,12 @@ int main( int argc, char *argv[] ){
 			onduration = atoi( arg.substr( 11 ).c_str() );
 		else if( arg.substr( 0, 9 ) == "linkrate=" ) 
 			TRAINING_LINK_RATE = atof( arg.substr( 9 ).c_str() );
-		else if( arg.substr( 0, 8 ) == "linklog=" ){
+		else if( arg.substr( 0, 8 ) == "linklog=" ) {
 			LINK_LOGGING_FILENAME = arg.substr( 8 );
 			LINK_LOGGING = true;
 		}
+		else if( arg.substr( 0, 15 ) == "traffic_params=")
+			traffic_params = arg.substr( 15 );
 		else if( arg.substr( 0, 6 ) == "delta=" )
 			delta = atof( arg.substr( 6 ).c_str() );
 		else if( arg.substr( 0, 10 ) == "max_delay=" )
@@ -82,6 +85,8 @@ int main( int argc, char *argv[] ){
 			nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
 		else if( arg == "max_delay" )
 			nashcc_utility_mode = NashCC::UtilityMode::MAX_DELAY;
+		else if( arg == "min_fct" )
+			nashcc_utility_mode = NashCC::UtilityMode::MIN_FCT;
 		else if( arg.substr( 0, 7 ) == "cctype=" ) {
 			std::string cctype_str = arg.substr( 7 );
 			if( cctype_str == "remy" )
@@ -102,57 +107,60 @@ int main( int argc, char *argv[] ){
 		}
 	}
 
-	if ( serverip == "" || sourceip == ""){
+	if ( serverip == "" || sourceip == "") {
 		fprintf( stderr, "Usage: sender serverip=(ipaddr) sourceip=(ipaddr) [if=(ratname)] [delta=(for NashCC)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc|nash] [linkrate=(packets/sec)] [linklog=filename][serverport=(port)] [sourceport=(port)]\n");
 		exit(1);
 	}
 
-	if( not ratFound and cctype == CCType::REMYCC ){
+	if( not ratFound and cctype == CCType::REMYCC ) {
 		fprintf( stderr, "Please specify remy specification file using if=<filename>\n" );
 		exit(1);
 	}
 
-	if( cctype == CCType::REMYCC){
+	if( cctype == CCType::REMYCC) {
 		fprintf( stdout, "Using RemyCC.\n" );
 		RemyCC congctrl( whiskers );
 		CTCP< RemyCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
-		TrafficGenerator<CTCP<RemyCC>> traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		TrafficGenerator<CTCP<RemyCC>> traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
-	else if( cctype == CCType::TCPCC ){
+	else if( cctype == CCType::TCPCC ) {
 		fprintf( stdout, "Using UDT's TCP CC.\n" );
 		DefaultCC congctrl;
 		CTCP< DefaultCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
-		TrafficGenerator< CTCP< DefaultCC > > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		TrafficGenerator< CTCP< DefaultCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
-	else if ( cctype == CCType::KERNELCC ){
+	else if ( cctype == CCType::KERNELCC ) {
 		fprintf( stdout, "Using the Kernel's TCP using sockperf.\n");
 		KernelTCP connection( serverip, serverport );
-		TrafficGenerator< KernelTCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		TrafficGenerator< KernelTCP > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
-	else if ( cctype == CCType::PCC ){
+	else if ( cctype == CCType::PCC ) {
 		fprintf( stdout, "Using PCC.\n");
 		PCC_TCP connection( serverip, serverport );
-		TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
-	else if ( cctype == CCType::NASHCC ){
+	else if ( cctype == CCType::NASHCC ) {
 		double param = delta;
 		if (nashcc_utility_mode == NashCC::UtilityMode::MAX_DELAY) {
-			if (max_delay == -1.0){
+			if (max_delay == -1.0) {
 				fprintf(stderr, "Please specify max_delay for this mode\n");
 				exit(1);
 			}
 			param = max_delay;
 			fprintf( stdout, "Using NashCC in MAX_DELAY mode.\n" );
 		}
+		else if (nashcc_utility_mode == NashCC::UtilityMode::MIN_FCT) {
+			fprintf(stdout, "Using NashhCC in MIN_FCT mode.\n");
+		}
 		else
 			fprintf( stdout, "Using NashCC in CONSTANT_DELTA mode.\n" );
 		NashCC congctrl( nashcc_utility_mode, param );
 		CTCP< NashCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
-		TrafficGenerator<CTCP<NashCC>> traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		TrafficGenerator<CTCP<NashCC>> traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
 	else{
