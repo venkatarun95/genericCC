@@ -10,6 +10,7 @@
 
 // Controls the scaling of the rate-based congestion control signals
 //
+<<<<<<< HEAD
 // Scaling is based on link rate of the bottleneck link measured using 
 // the 'packet-pair' trick. Rate is measured in packets/s
 #undef SCALE_SEND_RECEIVE_EWMA
