@@ -5,7 +5,7 @@ void TimeEwma::reset() {
 }
 
 void TimeEwma::update(double value, double timestamp) {
-	assert(timestamp > last_update_timestamp);
+	assert(timestamp >= last_update_timestamp);
 
 	if (denominator == 0.0) {
 		ewma = value;
