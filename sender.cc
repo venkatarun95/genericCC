@@ -7,6 +7,7 @@
 #include "kernelTCP.hh"
 #include "pcc-tcp.hh"
 #include "nashcc.hh"
+#include "markoviancc.hh"
 #include "traffic-generator.hh"
 
 // see configs.hh for details
@@ -25,7 +26,7 @@ int main( int argc, char *argv[] ){
 	double delta=1.0, max_delay=-1.0;
 	NashCC::UtilityMode nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
 
-	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC } cctype = REMYCC;
+	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC, MARKOVIANCC } cctype = REMYCC;
 
 	for ( int i = 1; i < argc; i++ ) {
 		std::string arg( argv[ i ] );
@@ -94,6 +95,8 @@ int main( int argc, char *argv[] ){
 				cctype = CCType::PCC;
 			else if ( cctype_str == "nash" )
 				cctype = CCType::NASHCC;
+			else if (cctype_str == "markovian")
+				cctype = CCType::MARKOVIANCC;
 			else
 				fprintf( stderr, "Unrecognised congestion control protocol '%s'.\n", cctype_str.c_str() );
 		}
@@ -132,12 +135,12 @@ int main( int argc, char *argv[] ){
 		TrafficGenerator< KernelTCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
 		traffic_generator.spawn_senders( 1 );
 	}
-	else if ( cctype == CCType::PCC ){
-		fprintf( stdout, "Using PCC.\n");
-		PCC_TCP connection( serverip, serverport );
-		TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
-		traffic_generator.spawn_senders( 1 );
-	}
+	// else if ( cctype == CCType::PCC ){
+	// 	fprintf( stdout, "Using PCC.\n");
+	// 	PCC_TCP connection( serverip, serverport );
+	// 	TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+	// 	traffic_generator.spawn_senders( 1 );
+	// }
 	else if ( cctype == CCType::NASHCC ){
 		double param = delta;
 		if (nashcc_utility_mode == NashCC::UtilityMode::MAX_DELAY) {
@@ -153,6 +156,13 @@ int main( int argc, char *argv[] ){
 		NashCC congctrl( nashcc_utility_mode, param );
 		CTCP< NashCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
 		TrafficGenerator<CTCP<NashCC>> traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
+		traffic_generator.spawn_senders( 1 );
+	}
+	else if ( cctype == CCType::MARKOVIANCC ){
+		fprintf( stdout, "Using MarkovianCC.\n");
+		MarkovianCC congctrl;
+		CTCP< MarkovianCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
+		TrafficGenerator< CTCP< MarkovianCC > > traffic_generator( connection, onduration, offduration, TrafficType::EXPONENTIAL_ON_OFF );
 		traffic_generator.spawn_senders( 1 );
 	}
 	else{
