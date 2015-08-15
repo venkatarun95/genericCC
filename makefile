@@ -2,10 +2,10 @@ MEMORY_STYLE := ./protobufs-default
 
 CXX := g++
 CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -g -O2 
-INCLUDES := -I.	-I./protobufs-default -I./udt
+INCLUDES :=	-I./protobufs-default -I./udt
 
 LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc -ludt $(MEMORY_STYLE)/libremyprotos.a
-OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o utilities.o nashcc.o markoviancc.o
+OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o pcc-tcp.o nashcc.o utilities.o
 
 all: sender receiver prober
 
@@ -24,6 +24,4 @@ receiver: receiver.o udp-socket.o
 	$(CXX) $(INCLUDES) $(CXXFLAGS) -c $(input) -o $(output)
 
 pcc-tcp.o: pcc-tcp.cc
-	echo Warning: ignoring pcc-tcp.cc
-
-.PHONY: pcc-tcp.o
+	 g++ -DHAVE_CONFIG_H -I. -I./udt -std=c++11 -pthread         -fno-default-inline -g -O2 -MT pcc-tcp.o -MD -MP -c -o pcc-tcp.o pcc-tcp.cc 

@@ -12,7 +12,9 @@
 #include "udt/udt.h"
 #include "pcc.h"
 
+#include <cassert>
 #include <chrono>
+#include <mutex>
 
 #include "pcc-tcp.hh"
 
@@ -28,11 +30,11 @@ double PCC_TCP::current_timestamp( chrono::high_resolution_clock::time_point &st
    using namespace chrono;
    high_resolution_clock::time_point cur_time_point = high_resolution_clock::now();
    return duration_cast<duration<double>>(cur_time_point - start_time_point).count()*1000; //convert to milliseconds, because that is the scale on which the rats have been trained
-}
+} 
 
-
-void PCC_TCP::send_data( double duration, int flow_id, int src_id )
+void PCC_TCP::send_data( double flow_size, bool byte_switched, int flow_id, int src_id )
 {
+   assert(byte_switched);
   // use this function to initialize the UDT library
    UDT::startup();
 
@@ -99,41 +101,51 @@ void PCC_TCP::send_data( double duration, int flow_id, int src_id )
 //   if (NULL != cchandle)
 //      cchandle->setRate(1);
 
-   int size = 1500;//100000; //CHANGE - by venkat
+   int size = flow_size; //CHANGE - by venkat
    char* data = new char[size];
 
+   // used to allow this function to return after the monitor has printed
+   mutex run_monitor; 
+   run_monitor.lock();
+   struct {
+      UDTSOCKET* client;
+      mutex* run_monitor;
+   } compound = {&client, &run_monitor};
+
    #ifndef WIN32
-      pthread_create(new pthread_t, NULL, monitor, &client);
+      pthread_create(new pthread_t, NULL, monitor, &compound);
    #else
-      CreateThread(NULL, 0, monitor, &client, 0, NULL);
+      CreateThread(NULL, 0, monitor, &client, 0, NULL, &run_monitor);
    #endif
 
    chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
-   while ( current_timestamp( start_time_point ) < duration )
-   {
+   // while ( )
+   // {
       int ssize = 0;
       int ss;
-      while (ssize < size and current_timestamp( start_time_point ) < duration)
+      while (ssize < size)
       {
          if (UDT::ERROR == (ss = UDT::send(client, data + ssize, size - ssize, 0)))
          {
             cout << "send:" << UDT::getlasterror().getErrorMessage() << endl;
             break;
          }
-
          ssize += ss;
       }
+      bool tmp = false;
+      UDT::getsockopt(client, 0, UDT_SNDSYN, &tmp, new int(0));
+      // cout << "Sockopt: " << tmp << endl;
+      // cout << current_timestamp( start_time_point ) << " " << duration << endl;
 
-      if (ssize < size)
-         break;
-   }
+   //    if (ssize < size)
+   //       break;
+   // }
 
    UDT::close(client);
 
-   delete [] data;
+   run_monitor.try_lock(); // allow monitor to run once
 
-   // use this function to release the UDT library
-   UDT::cleanup();
+   delete [] data;
 
    return;
 }
@@ -144,41 +156,53 @@ void* monitor(void* s)
 DWORD WINAPI monitor(LPVOID s)
 #endif
 {
-   UDTSOCKET u = *(UDTSOCKET*)s;
+   struct TmpCompound{
+      UDTSOCKET* client;
+      mutex* run_monitor; // useless for now
+   } compound = *(TmpCompound*)s;
+
+   UDTSOCKET u = *(UDTSOCKET*)compound.client;
 
    UDT::TRACEINFO perf;
 
-   cout << "SendRate(Mb/s)\tRTT(ms)\tCWnd\tPktSndPeriod(us)\tRecvACK\tRecvNAK" << endl;
-   int i=0;
-   while (true)
+   // cout << "SendRate(Mb/s)\tRTT(ms)\tCWnd\tPktSndPeriod(us)\tRecvACK\tRecvNAK" << endl;
+   while (true)//!((mutex*)compound.run_monitor)->try_lock())
    {
       #ifndef WIN32
-         usleep(1000000);
+         usleep(100000);
       #else
-         Sleep(1000);
+         Sleep(100);
       #endif
-    i++;
-    if(i>10000)
-        {
-        exit(1); 
-        }
       if (UDT::ERROR == UDT::perfmon(u, &perf))
       {
-         cout << "perfmon: " << UDT::getlasterror().getErrorMessage() << endl;
+         // cout << "perfmon: " << UDT::getlasterror().getErrorMessage() << endl;
          break;
       }
-    cout << perf.mbpsSendRate << "\t\t"
-           << perf.msRTT << "\t"
-           <<  perf.pktSentTotal << "\t"
-           << perf.pktSndLossTotal << "\t\t\t"
-           << perf.pktRecvACKTotal << "\t"
-           << perf.pktRecvNAKTotal << endl;
+      // cout << perf.mbpsSendRate << "\t\t"
+      //      << perf.msRTT << "\t"
+      //      <<  perf.pktSentTotal << "\t"
+      //      << perf.pktSndLossTotal << "\t\t\t"
+      //      << perf.pktRecvACKTotal << "\t"
+      //      << perf.pktRecvNAKTotal << endl;
+   };
+   std::cout<<"\n\nData Successfully Transmitted\n\tThroughput: "<<\
+      perf.mbpsRecvRate/8<<" bytes/sec\n\tAverage Delay: "<<perf.msRTT/100.0\
+      <<" sec/packet\n";
 
-   }
+   double avg_throughput = -1;
+   double avg_delay = -1;
+   std::cout<<"\n\tAvg. Throughput: "<<avg_throughput<<" bytes/sec\n\tAverage Delay: "<<avg_delay<<" sec/packet\n";
+
+   ((mutex*)compound.run_monitor)->unlock();
 
    #ifndef WIN32
       return NULL;
    #else
       return 0;
    #endif
+}
+
+PCC_TCP::~PCC_TCP() {
+   // use this function to release the UDT library
+   UDT::cleanup();
 }

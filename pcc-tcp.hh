@@ -18,8 +18,10 @@ public:
 		dstport( port )
 	{ }
 
-	//duration in milliseconds
-	void send_data ( double duration, int flow_id, int src_id );
+	~PCC_TCP();
+
+	// flow size in milliseconds (byte_switched = false) or bytes (byte_switched = true)
+	void send_data ( double duration, bool byte_switched, int flow_id, int src_id );
 
 	void listen_for_data ( ) { assert( false ); };
 };
