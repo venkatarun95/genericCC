@@ -26,3 +26,17 @@
 *.exe
 *.out
 *.app
+
+# Project specific edits
+
+# Specific Folders
+udt/*
+
+# Trace files
+trace*
+
+# Temporaries
+tmp*
+
+# Compiled Python
+*.pyc
