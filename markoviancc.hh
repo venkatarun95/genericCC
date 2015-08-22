@@ -17,6 +17,7 @@ class MarkovianCC : public CCC {
 	// some adjustable parameters
 	const double alpha_rtt = 1.0/16.0;
 	const double alpha_intersend = 1.0/16.0;
+	const double alpha_update = 1.0/2.0;
 	// set of all unacked pkts Format: (seq_num, sent_timestamp)
 	//
 	// Note: a packet is assumed to be lost if a packet with a higher
@@ -24,6 +25,10 @@ class MarkovianCC : public CCC {
 	// which are NOT lost
 	std::map<int, double> unacknowledged_packets;
 	
+	double min_rtt;
+
+	TimeEwma mean_intersend_time;
+
 	TimeEwma rtt_acked_ewma;  // estimated using only acked packets
 	TimeEwma rtt_unacked_ewma; // unacked packets are also considered
 	TimeEwma intersend_ewma;
@@ -47,10 +52,12 @@ class MarkovianCC : public CCC {
 	void update_intersend_time();
 
 public:
-	MarkovianCC( ) 
+	MarkovianCC( double s_delta ) 
 	: 	CCC(), 
-		delta(),
+		delta( s_delta ),
 		unacknowledged_packets(),
+		min_rtt(),
+		mean_intersend_time(alpha_update),
 		rtt_acked_ewma(alpha_rtt),
 		rtt_unacked_ewma(alpha_rtt),
 		intersend_ewma(alpha_intersend),

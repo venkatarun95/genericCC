@@ -168,7 +168,7 @@ int main( int argc, char *argv[] ) {
 	}
 	else if ( cctype == CCType::MARKOVIANCC ){
 		fprintf( stdout, "Using MarkovianCC.\n");
-		MarkovianCC congctrl;
+		MarkovianCC congctrl(delta);
 		CTCP< MarkovianCC > connection( congctrl, serverip, serverport, sourceip, sourceport );
 		TrafficGenerator< CTCP< MarkovianCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );

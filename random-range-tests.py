@@ -1,5 +1,6 @@
 import argparse
 from fractions import Fraction
+import math
 import os
 import pickle
 import random
@@ -11,7 +12,7 @@ from parsing_scripts import parse_tcptrace
 linkspeed_range = [2, 15] # in MBps
 minrtt_range = [20.0, 200.0] # in ms
 num_senders_list = [1, 2, 4, 8, 16, 32, 64]
-delta_list = [0.1, 1.0, 10.0]
+delta_list = [1.0]
 rat_source = "input-rats/nash-eval/"
 rat_list = []
 
@@ -62,7 +63,7 @@ def create_pkl_from_log(base_name, log_type, outfile_name):
 	if log_type == 'ctcp':
 		data = parse_ctcp_output.parse_file(base_name)
 	else:
-		data = parse_tcptrace.parse_file(base_name+'-tcptrace')
+		data = parse_tcptrace.parse_file(base_name+'-tcptrace', endpt_name='100.64.0.1')
 	outfile = open(outfile_name, 'w')
 	pickle.dump(data, outfile)
 	outfile.close()
@@ -97,14 +98,14 @@ def single_mahimahi_run(
 	assert(type(numsenders) is int)
 	assert(type(ratname) is str)
 	assert(type(training_linkrate) is float) # in MBps
-	assert(cctype in ['remy', 'kernel', 'nash'])
+	assert(cctype in ['remy', 'kernel', 'nash', 'markovian'])
 	assert(os.path.isdir(output_directory))
 
 	ratname_nice = ratname.split('/')[-1].split('-linkppt')[0]
 	if cctype == 'kernel':
 		ratname_nice = 'cubic'
-	if cctype == 'nash':
-		ratname_nice = 'nash' + str(delta)
+	if cctype in ['nash', 'markovian']:
+		ratname_nice = cctype + str(delta)
 	outfile_name = 'rawout-' + ratname_nice + '-' + str(linkrate) + '-' \
 					+ str(minrtt) + '-' + str(numsenders)
 	outfile_name = os.path.join(output_directory, outfile_name)
@@ -116,12 +117,18 @@ def single_mahimahi_run(
 	except OSError:
 		print "Warning: Unable to remove tmp file"
 
+	queue_length = linkrate * minrtt * 1e6
+	print "Queue Length: ", queue_length, " bytes"
+
 	runstr = 'mm-delay ' + str(int(minrtt/2)) \
 			+ ' mm-link /tmp/linkshell-trace /tmp/linkshell-trace ' \
 			+ 'sudo ./run-senders-parallel.sh ingress 100.64.0.1 8888 ' \
 			+ cctype + ' ' + ratname + ' ' + str(delta) + ' ' \
 			+ str(numsenders) + ' ' + str(training_linkrate) + ' 0 ' \
 			+ 'tmp-random-range-tests.dat' #outfile_name
+
+			# + '--uplink-queue-args="bytes=' + str(queue_length) \
+			# + '" --uplink-queue=droptail ' \
 
 	os.system(runstr)
 
@@ -137,7 +144,7 @@ def run_tests(output_directory):
 
 		for delta in delta_list:
 			try:
-				os.mkdir(os.path.join(output_directory, 'nash'+str(delta)))
+				os.mkdir(os.path.join(output_directory, 'markovian'+str(delta)))
 			except OSError:
 				pass
 			single_mahimahi_run(
@@ -147,24 +154,39 @@ def run_tests(output_directory):
 				numsenders,
 				'norat',
 				1.0,
-				'nash',
-				os.path.join(output_directory, 'nash'+str(delta))
+				'markovian',
+				os.path.join(output_directory, 'markovian'+str(delta))
 			)
-		for rat in rat_list:
-			try:
-				os.mkdir(os.path.join(output_directory, 'remy-'+rat.split('/')[-1]))
-			except OSError:
-				pass
-			single_mahimahi_run(
-				minrtt,
-				linkrate,
-				1.0,
-				numsenders,
-				rat,
-				1.0,
-				'remy',
-				os.path.join(output_directory, 'remy-'+rat.split('/')[-1])
-			)
+		# for delta in delta_list:
+		# 	try:
+		# 		os.mkdir(os.path.join(output_directory, 'nash'+str(delta)))
+		# 	except OSError:
+		# 		pass
+		# 	single_mahimahi_run(
+		# 		minrtt,
+		# 		linkrate,
+		# 		delta,
+		# 		numsenders,
+		# 		'norat',
+		# 		1.0,
+		# 		'nash',
+		# 		os.path.join(output_directory, 'nash'+str(delta))
+		# 	)
+		# for rat in rat_list:
+		# 	try:
+		# 		os.mkdir(os.path.join(output_directory, 'remy-'+rat.split('/')[-1]))
+		# 	except OSError:
+		# 		pass
+		# 	single_mahimahi_run(
+		# 		minrtt,
+		# 		linkrate,
+		# 		1.0,
+		# 		numsenders,
+		# 		rat,
+		# 		1.0,
+		# 		'remy',
+		# 		os.path.join(output_directory, 'remy-'+rat.split('/')[-1])
+		# 	)
 		# try:
 		# 	os.mkdir(os.path.join(output_directory, 'kernel'))
 		# except OSError:
@@ -212,10 +234,16 @@ def analyse_pkl_data(input_directory):
 		rawout-(?P<ratname>cubic)-
 		(?P<linkrate>[0-9.]+)-
 		(?P<minrtt>[0-9.]+)-
-		(?P<numsenders>[0-9]+)-tcptrace$
+		(?P<numsenders>[0-9]+)$
 	""", re.VERBOSE)
 	re_mahimahi_nash_name = re.compile(r"""
 		rawout-(?P<ratname>nash[0-9.]*)-
+		(?P<linkrate>[0-9.]+)-
+		(?P<minrtt>[0-9.]+)-
+		(?P<numsenders>[0-9]+)$
+	""", re.VERBOSE)
+	re_mahimahi_markovian_name = re.compile(r"""
+		rawout-(?P<ratname>markovian[0-9.]*)-
 		(?P<linkrate>[0-9.]+)-
 		(?P<minrtt>[0-9.]+)-
 		(?P<numsenders>[0-9]+)$
@@ -239,23 +267,28 @@ def analyse_pkl_data(input_directory):
 				match = re_mahimahi_name.match(filename)
 			elif directory.find('nash') != -1:
 				match = re_mahimahi_nash_name.match(filename)
+			elif directory.find('markovian') != -1:
+				match = re_mahimahi_markovian_name.match(filename)
 			else:
 				print "Cannot understand directory name: ", directory
 				break
 
 			linkrate, minrtt, numsenders = float(match.group('linkrate')), \
 				float(match.group('minrtt')), int(match.group('numsenders'))
-
 			data = pickle.load(infile)
 			infile.close()
 			for x in data:
 				x['Throughput'] /= 1e6 # convert to MBps
-				x['Throughput'] = linkrate / ((numsenders+1) / 2) # normalize w.r.t optimum
-				x['RTT'] -= minrtt # find queueing delay
+				x['Throughput'] /= linkrate / ((numsenders+1) / 2) # normalize w.r.t optimum
+				# x['Throughput'] /= (numsenders/2.0) / ((numsenders/2.0) + 1.0)
+				# x['RTT'] -= minrtt # find queueing delay
+				x['RTT'] /= minrtt
+				# print x['RTT'], minrtt
 				x['RTT'] *= linkrate * 1e3 / 1500.0 #normalize and convert to pkts in queue
 			master_data_list.extend(data)
 
-		print directory, "\t", weighted_means(master_data_list)
+		res = weighted_means(master_data_list)
+		print directory, "\t", res#, res[0] / math.sqrt(res[1]), res[0] / res[1]
 
 
 if __name__ == "__main__":
