@@ -3,8 +3,8 @@
 trash convergence-test-tcpdump
 sudo tcpdump -i ingress -w convergence-test-tcpdump & tcpdump_pid=$!
 
-shortest_duration=20000
-delta=0.05
+shortest_duration=100000
+delta=0.1
 cctype=markovian
 
 ./sender \
@@ -55,7 +55,7 @@ echo "" > /tmp/r_script
 while read p; do
 	grep $p\ \> convergence-test-tcpdump-ascii | \
 		awk '{print $1}' | \
-		awk -F ':' 'BEGIN{prev=0}{print $3, 1/($3-prev);prev=$3}' > /tmp/Sender_$p
+		awk -F ':' 'BEGIN{prev=0}{print $2*60+$3, 1/($3-prev);prev=$2*60+$3}' > /tmp/Sender_$p
   	echo "Sender_$p"
   	gnuplot_script="$gnuplot_script \"/tmp/Sender_$p\" using 1:2, " 
   	
@@ -65,7 +65,8 @@ while read p; do
   	i=$((i+1))
 done </tmp/unique_ports
 
-echo "plot(h_1, col=rgb(1,0,0,1/4), xlim=c(min(min(v_3\$V1), min(v_2\$V1), min(v_1\$V1)), max(max(v_3\$V1), max(v_2\$V1), max(v_1\$V1))))" >> /tmp/r_script
+# echo "plot(h_1, col=rgb(1,0,0,1/4), xlim=c(min(min(v_3\$V1), min(v_2\$V1), min(v_1\$V1)), max(max(v_3\$V1), max(v_2\$V1), max(v_1\$V1))))" >> /tmp/r_script
+echo "plot(h_1, col=rgb(1,0,0,1/4), xlim=c(min(min(v_3\$V1), min(v_2\$V1), min(v_1\$V1)), max(max(v_3\$V1), max(v_2\$V1), max(v_1\$V1))), ylim=c(0, max(max(h_1\$counts), max(h_2\$counts), max(h_3\$counts))))" >> /tmp/r_script 
 echo "plot(h_2, col=rgb(0,1,0,1/4), add=T)" >> /tmp/r_script
 echo "plot(h_3, col=rgb(0,0,1,1/4), add=T)" >> /tmp/r_script
 

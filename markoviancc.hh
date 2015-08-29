@@ -15,9 +15,10 @@ class MarkovianCC : public CCC {
 	double delta;
 
 	// some adjustable parameters
-	const double alpha_rtt = 1.0/16.0;
-	const double alpha_intersend = 1.0/16.0;
+	const double alpha_rtt = 1.0/2.0;
+	const double alpha_intersend = 1.0/2.0;
 	const double alpha_update = 1.0/2.0;
+	const double initial_intersend_time = 10.0;
 	// set of all unacked pkts Format: (seq_num, sent_timestamp)
 	//
 	// Note: a packet is assumed to be lost if a packet with a higher
@@ -35,6 +36,9 @@ class MarkovianCC : public CCC {
 	// send time of previous ack. Used to calculate intersend time
 	double prev_ack_sent_time;
 
+	// true when slow start is on
+	bool slow_start;
+
 	PRNG prng;
 
 	// cur_time is measured relative to this
@@ -51,6 +55,9 @@ class MarkovianCC : public CCC {
 	// update intersend time based on rtt ewma and intersend ewma
 	void update_intersend_time();
 
+	// update intersend time using slow start approach
+	void do_slow_start();
+
 public:
 	MarkovianCC( double s_delta ) 
 	: 	CCC(), 
@@ -62,6 +69,7 @@ public:
 		rtt_unacked_ewma(alpha_rtt),
 		intersend_ewma(alpha_intersend),
 		prev_ack_sent_time(),
+		slow_start(false),
 		prng(current_timestamp()),
 		start_time_point(),
 		num_pkts_lost(),

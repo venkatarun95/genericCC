@@ -25,6 +25,7 @@ public:
 	void update(double value, double timestamp);
 	void add(double value) {ewma += value;}
 	void round() {ewma = int(ewma*100000) / 100000.0;}
+	void force_set(double value, double timestamp);
 
 	operator double() const {return ewma;}
 	// true if update has been called atleast once

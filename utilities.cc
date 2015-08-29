@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "utilities.hh"
 
 void TimeEwma::reset() {
@@ -18,5 +20,11 @@ void TimeEwma::update(double value, double timestamp) {
 	double new_denom = 1.0 + ewma_factor * denominator;
 	ewma = (value + ewma_factor * ewma * denominator) / new_denom;
 	denominator = new_denom;
+	last_update_timestamp = timestamp;
+}
+
+void TimeEwma::force_set(double value, double timestamp) {
+	ewma = value;
+	denominator = 1;
 	last_update_timestamp = timestamp;
 }

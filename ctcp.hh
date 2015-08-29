@@ -43,6 +43,8 @@ private:
   int tot_bytes_transmitted;
   int tot_packets_transmitted;
 
+  void tcp_handshake();
+
 public:
 
   CTCP( T s_congctrl, string ipaddr, int port, string s_myaddr, int s_myport ) 
@@ -106,9 +108,45 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
   return duration_cast<duration<double>>(cur_time_point - start_time_point).count()*1000; //convert to milliseconds, because that is the scale on which the rats have been trained
 }
 
+template<class T>
+void CTCP<T>::tcp_handshake() {
+  TCPHeader header, ack_header;
+
+  // this is the data that is transmitted. A sizeof(TCPHeader) header followed by a sring of dashes
+  char buf[packet_size];
+  memset(buf, '-', sizeof(char)*packet_size);
+  buf[packet_size-1] = '\0';
+
+  header.seq_num = -1;
+  header.flow_id = -1;
+  header.src_id = -1;
+  header.sender_timestamp = -1;
+  header.receiver_timestamp = -1;
+
+  memcpy( buf, &header, sizeof(TCPHeader) );
+  socket.senddata( buf, packet_size, NULL );
+
+  sockaddr_in other_addr;
+  while ( true ) {
+    if (socket.receivedata( buf, packet_size, 2000, other_addr ) == 0) {
+      cerr << "Could not establish connection" << endl;
+      continue;
+    }
+    memcpy(&ack_header, buf, sizeof(TCPHeader));
+    if (ack_header.seq_num != -1 || ack_header.flow_id != -1)
+      continue;
+    if (ack_header.sender_timestamp != -1 || ack_header.src_id != -1)
+      continue;
+    break;
+  }
+  cout << "Connection Established." << endl; 
+}
+
 // takes flow_size in milliseconds (byte_switched=false) or in bytes (byte_switched=true) 
 template<class T>
 void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int src_id ){
+  tcp_handshake();
+
   TCPHeader header, ack_header;
 
   // this is the data that is transmitted. A sizeof(TCPHeader) header followed by a sring of dashes
