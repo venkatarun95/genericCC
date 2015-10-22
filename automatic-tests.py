@@ -73,16 +73,15 @@ if __name__ == '__main__':
     while True:
         x = random.randrange(len(rat_names)+len(deltas)+1)
         rat_id, delta = 0, 0.0
-        print "Running only Kernel" + str(x)
+        print "Running only Kernel and Remy " + str(x)
         if x < len(deltas): # everybody has equal probability
             cctype = 'nash'
             delta = deltas[random.randrange(len(deltas))]
+            continue
         elif x == len(deltas): 
             cctype = 'kernel'
-            continue
         else:
             cctype = 'remy'
-            continue
             rat_id = random.randrange(len(rat_names))
         num_senders = num_senders_list[ random.randrange(len(num_senders_list)) ]
         num_kernels = num_kernels_list[ random.randrange(len(num_kernels_list)) ]

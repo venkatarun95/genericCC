@@ -17,7 +17,7 @@ class MarkovianCC : public CCC {
 	// some adjustable parameters
 	const double alpha_rtt = 1.0/2.0;
 	const double alpha_intersend = 1.0/2.0;
-	const double alpha_update = 1.0/2.0;
+	const double alpha_update = 1.0;//1.0/2.0;
 	const double initial_intersend_time = 10.0;
 	// set of all unacked pkts Format: (seq_num, sent_timestamp)
 	//
@@ -28,7 +28,7 @@ class MarkovianCC : public CCC {
 	
 	double min_rtt;
 
-	TimeEwma mean_intersend_time;
+	TimeEwma mean_sending_rate;
 
 	TimeEwma rtt_acked_ewma;  // estimated using only acked packets
 	TimeEwma rtt_unacked_ewma; // unacked packets are also considered
@@ -64,7 +64,7 @@ public:
 		delta( s_delta ),
 		unacknowledged_packets(),
 		min_rtt(),
-		mean_intersend_time(alpha_update),
+		mean_sending_rate(alpha_update),
 		rtt_acked_ewma(alpha_rtt),
 		rtt_unacked_ewma(alpha_rtt),
 		intersend_ewma(alpha_intersend),

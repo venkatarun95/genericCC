@@ -185,9 +185,10 @@ DWORD WINAPI monitor(LPVOID s)
       //      << perf.pktRecvACKTotal << "\t"
       //      << perf.pktRecvNAKTotal << endl;
    };
-   std::cout<<"\n\nData Successfully Transmitted\n\tThroughput: "<<\
-      perf.mbpsRecvRate/8<<" bytes/sec\n\tAverage Delay: "<<perf.msRTT/100.0\
-      <<" sec/packet\n";
+      std::cout<<"\n\nData Successfully Transmitted\n\tThroughput: "<<\
+         perf.mbpsRecvRate/8<<" bytes/sec\n\tAverage Delay: "<<perf.msRTT/100.0\
+         <<" sec/packet\n";
+      // std::cout << "Lost: " << perf.pktSndLossTotal << " " << perf.pktRecvACKTotal << endl;
 
    double avg_throughput = -1;
    double avg_delay = -1;

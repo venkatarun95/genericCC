@@ -33,7 +33,7 @@ public:
 	virtual void init();
 	virtual void onACK(int ack, double receiver_timestamp) override ;
 	virtual void onPktSent(int seq_num) override ;
-	virtual void onTimeout() override { std::cerr << "Ack timed out!\n"; }
+	virtual void onTimeout() override { /*std::cerr << "Ack timed out!\n";*/ }
 	virtual void onLinkRateMeasurement( double s_measured_link_rate ) override;
 
 	RemyCC( WhiskerTree & s_tree ) 

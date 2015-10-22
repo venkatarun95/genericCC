@@ -216,8 +216,8 @@ cerr<<"RTT cannot be 0!!!"<<endl;
 }
 if(previous_rtt==0)
 previous_rtt = rtt;
-//utility = ((t-l)/time*(1-1/(1+exp(-100*(l/t-0.05))))-1*l/time);
-utility = ((t-l)/time*(1-1/(1+exp(-100*(l/t-0.05))))* (1-1/(1+exp(-10*(1-previous_rtt/rtt)))) -1*l/time)/rtt*1000;
+utility = ((t-l)/time*(1-1/(1+exp(-100*(l/t-0.05))))-1*l/time);
+// utility = ((t-l)/time*(1-1/(1+exp(-100*(l/t-0.05))))* (1-1/(1+exp(-10*(1-previous_rtt/rtt)))) -1*l/time)/rtt*1000;
 previous_rtt = rtt;
 if(endMonitor == 0 && starting_phase)
 utility /=2;

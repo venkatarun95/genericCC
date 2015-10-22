@@ -21,7 +21,7 @@ void MarkovianCC::init() {
 
 	min_rtt = numeric_limits<double>::max();
 
-	mean_intersend_time.reset();
+	mean_sending_rate.reset();
 
 	rtt_acked_ewma.reset();
 	rtt_unacked_ewma.reset();
@@ -31,7 +31,7 @@ void MarkovianCC::init() {
 
 	slow_start = true;
 
-	_the_window = 10; //numeric_limits<double>::max();
+	_the_window = numeric_limits<double>::max();
 	_timeout = 1000;
 
 	num_pkts_lost = num_pkts_acked = 0;
@@ -45,52 +45,60 @@ void MarkovianCC::do_slow_start() {
 
 	// Increase until saturation
 
-	static double prev_send_ewma = initial_intersend_time;
-	static double prev_update_time = -1.0;
-	static unsigned int prev_num_pkts_acked = 0;
-	static double prev_prev_send_ewma = 0.0;
+	// static double prev_send_ewma = initial_intersend_time;
+	// static double prev_update_time = -1.0;
+	// static unsigned int prev_num_pkts_acked = 0;
+	// static double prev_prev_send_ewma = 0.0;
 
-	static double sum_inter_recv_time = 0.0;
-	static double last_ack_time = 0.0;
+	// static double sum_inter_recv_time = 0.0;
+	// static double last_ack_time = 0.0;
 
-	if (num_pkts_acked < 10)
-		return;
-	if (prev_update_time == -1.0) {
-		prev_update_time = cur_time;
-		prev_num_pkts_acked = num_pkts_acked;
-	}
-	if (last_ack_time != 0.0)
-		sum_inter_recv_time += cur_time - last_ack_time;
-	last_ack_time = cur_time;
+	// if (num_pkts_acked < 10)
+	// 	return;
+	// if (prev_update_time == -1.0) {
+	// 	prev_update_time = cur_time;
+	// 	prev_num_pkts_acked = num_pkts_acked;
+	// }
+	// if (last_ack_time != 0.0)
+	// 	sum_inter_recv_time += cur_time - last_ack_time;
+	// last_ack_time = cur_time;
 
-	if (prev_update_time > cur_time - rtt_ewma)
-		return;
-	double prev_recv_ewma = sum_inter_recv_time / (num_pkts_acked - prev_num_pkts_acked);//(cur_time - prev_update_time) / (num_pkts_acked - prev_num_pkts_acked);
-	if (prev_recv_ewma > 2*prev_prev_send_ewma && prev_prev_send_ewma != 0) {
-		//slow_start = false;
-		// _intersend_time *= 2;
-		prev_send_ewma = 100.0;
-		prev_update_time = 0.0;
-		prev_num_pkts_acked = 0;
-		sum_inter_recv_time = 0.0;
-		// _intersend_time = prev_recv_ewma;
-		slow_start = false;
-		_intersend_time *= 2;
-		_the_window /= 2;
-		intersend_ewma.force_set(_intersend_time, cur_time / min_rtt);
-		// cout << "Stopped slow start: " << prev_recv_ewma << " " << prev_prev_send_ewma << " " << _intersend_time << endl;
-		return;
-	}
-	// if (prev_num_pkts_acked - num_pkts_acked > 0.9*_the_window)
-	// 	_the_window *= 2;
-	_the_window = rtt_ewma / (_intersend_time);
-	_intersend_time /= 2;
-	// cout << "Slow Start double: " << _intersend_time << " " << _the_window << " " << prev_recv_ewma << endl;
-	prev_prev_send_ewma = prev_send_ewma;
-	prev_send_ewma = _intersend_time;
-	prev_update_time = cur_time;
-	prev_num_pkts_acked = num_pkts_acked;
-	sum_inter_recv_time = 0.0;
+	// if (prev_update_time > cur_time - rtt_ewma)
+	// 	return;
+	// double prev_recv_ewma = sum_inter_recv_time / (num_pkts_acked - prev_num_pkts_acked);//(cur_time - prev_update_time) / (num_pkts_acked - prev_num_pkts_acked);
+	// if (prev_recv_ewma > 1.5*prev_prev_send_ewma && prev_prev_send_ewma != 0) {
+	// 	prev_send_ewma = 100.0;
+	// 	prev_update_time = 0.0;
+	// 	prev_num_pkts_acked = 0;
+	// 	sum_inter_recv_time = 0.0;
+	// 	slow_start = false;
+	// 	// _intersend_time *= 2;
+	// 	_the_window = numeric_limits<double>::max();
+		
+	// 	// Set to current rate
+	// 	_intersend_time = prev_recv_ewma;
+
+	// 	// Estimate number of senders and set rate
+	// 	// double link_rate = 2.6667;
+	// 	// double tmp_spare_rate = 1/prev_recv_ewma;
+	// 	// double est_num_senders = max(0.0, delta * (link_rate - tmp_spare_rate) / tmp_spare_rate);
+	// 	// _intersend_time = (est_num_senders + 1) / link_rate;
+	// 	// cout << est_num_senders << " " << tmp_spare_rate << " " << _intersend_time << endl;
+
+	// 	intersend_ewma.force_set(_intersend_time, cur_time / min_rtt);
+	// 	cout << "Stopped slow start: " << prev_recv_ewma << " " << prev_prev_send_ewma << " " << _intersend_time << endl;
+	// 	return;
+	// }
+	// // if (prev_num_pkts_acked - num_pkts_acked > 0.9*_the_window)
+	// // 	_the_window *= 2;
+	// _the_window = rtt_ewma / (_intersend_time);
+	// _intersend_time /= 2;
+	// cout << "Slow Start double: " << _intersend_time << " " << _the_window << " " << prev_recv_ewma << " " << prev_prev_send_ewma << endl;
+	// prev_prev_send_ewma = prev_send_ewma;
+	// prev_send_ewma = _intersend_time;
+	// prev_update_time = cur_time;
+	// prev_num_pkts_acked = num_pkts_acked;
+	// sum_inter_recv_time = 0.0;
 
 
 	// Guess number of senders
@@ -108,16 +116,77 @@ void MarkovianCC::do_slow_start() {
 	// 	// cout << est_num_senders << " " << _intersend_time << " " << (1.0/(rtt_ewma - min_rtt) + 1/_intersend_time) << endl;
 
 	// 	double tmp_spare_rate = 1.0 / (rtt_ewma - min_rtt) + 1.0 / _intersend_time;
-	// 	double est_num_senders = delta * (link_rate - tmp_spare_rate) / tmp_spare_rate ;
+	// 	double est_num_senders = max(0.0, delta * (link_rate - tmp_spare_rate) / tmp_spare_rate);
 	// 	_intersend_time = (est_num_senders + 1) / link_rate;
-	// 	cout << _intersend_time << " " << est_num_senders << " " << tmp_spare_rate << endl;
+	// 	mean_sending_rate.force_set(1.0 / _intersend_time, cur_time / min_rtt);
+	// 	cout << 1.0/_intersend_time << " " << est_num_senders << " " << tmp_spare_rate << endl;
 	// }
 	// if (cur_time - start_time > rtt_ewma) {
 	// 	slow_start = false;
 	// 	start_time = 0;
 	// 	intersend_ewma.force_set(_intersend_time, cur_time / min_rtt);
-	// 	cout << "Slow start stopped" << endl;
+	// 	cout << "Slow start stopped" << endl << flush;
 	// }
+
+
+	// Double the queuing delay
+
+	if (num_pkts_acked < 50)
+		return;
+
+	assert(false);
+
+	static double prev_window_update_time = 0.0;
+	static double initial_rtt = 0;
+	// number of rtts to hold rate at after window size is discovered
+	const unsigned int num_hold_rtts = 4; 
+	static unsigned int hold_rtts = 0;
+	// Initial window size after hold commences
+	static double hold_window = 0;
+	if (prev_window_update_time == 0.0) {
+		prev_window_update_time = cur_time;
+		_the_window = 1;
+		_intersend_time = rtt_ewma / 1;
+		initial_rtt = rtt_ewma;
+		cout << initial_rtt << " rtt" << " " << min_rtt << endl;
+	}
+	if (hold_rtts != 0) {
+		if (hold_rtts > num_hold_rtts) {
+			slow_start = false;
+			mean_sending_rate.force_set(1.0 / _intersend_time, cur_time / min_rtt);
+			initial_rtt = 0;
+			hold_rtts = 0;
+			prev_window_update_time = 0.0;
+			_the_window = numeric_limits<double>::max();
+			cout << "Leaving slowstart: " << _intersend_time << " " << rtt_ewma << " " << min_rtt << endl;
+			return;
+		}
+		if ((rtt_ewma - min_rtt) > 2 * (initial_rtt - min_rtt)) 
+			_the_window -= 1.0 / _the_window;
+		else
+			_the_window += 1.0 / _the_window;
+		_the_window = min (_the_window, hold_window);
+		_the_window = max (_the_window, hold_window / 2);
+		_intersend_time = rtt_ewma / _the_window;
+	}
+	if (cur_time - prev_window_update_time > rtt_ewma) {
+		prev_window_update_time = cur_time;
+		if ((rtt_ewma - min_rtt) > 2 * (initial_rtt - min_rtt) && hold_rtts == 0) {
+			// _the_window /= 2;
+			hold_window = _the_window;
+			// _intersend_time *= 2;
+			hold_rtts = 1;
+			return;
+		}
+		if (hold_rtts != 0) {
+			cout << "Holding RTT: " << hold_rtts << " " << _the_window << endl;
+			++ hold_rtts;
+			return;
+		}
+		cout << _the_window << " " << rtt_ewma << endl;
+		_the_window *= 2;
+		_intersend_time = rtt_ewma / _the_window;
+	}
 }
 
 void MarkovianCC::update_intersend_time() {
@@ -125,17 +194,16 @@ void MarkovianCC::update_intersend_time() {
 	if (!intersend_ewma.is_valid())
 	 	return;
 
-	if (slow_start) {
-		do_slow_start();
-		return;
-	}
+	// if (slow_start) {
+	// 	do_slow_start();
+	// 	return;
+	// }
+
+	// cout << mean_sending_rate << " " << 1.0 / intersend_ewma << endl;
 
 	double rtt_ewma = max(rtt_unacked_ewma, rtt_acked_ewma);
 
 	double tmp_old_intersend_time = _intersend_time;
-	// _intersend_time = delta * (rtt_ewma - min_rtt);
-	// cout << _intersend_time << " " << rtt_ewma << endl;
-	// represents \mu - \overline{lambda_i}
 
 	// Utility = throughput / delay^\delta
 	// double tmp_spare_rate = 1.0 / (rtt_ewma - min_rtt) + 1/intersend_ewma;
@@ -143,24 +211,29 @@ void MarkovianCC::update_intersend_time() {
 	// 	sqrt((delta+1)*(delta+1) + 4*delta*min_rtt*tmp_spare_rate));
 	
 	// Utility = throughput / (queuing delay)^\delta
-	double new_intersend_mean = (delta + 1) / (1.0/(rtt_ewma - min_rtt) + 1.0/intersend_ewma);
-	// double new_intersend_mean = delta * (rtt_ewma - min_rtt);
+	double new_sending_rate = (1.0/(rtt_ewma - min_rtt) + 1.0/intersend_ewma) / (delta + 1);
 
-	// double new_intersend_mean = delta * (rtt_ewma - min_rtt + 1.0) / 10.0;
-	// double new_intersend_mean = (delta + 1) / (0.376/(rtt_ewma - min_rtt + 1.0) + 1.0/intersend_ewma);
-	// cout << new_intersend_mean << " " << rtt_ewma - min_rtt << endl;
 
 	if (num_pkts_acked < 10) {
-	 	_intersend_time = max(new_intersend_mean, tmp_old_intersend_time); // to avoid bursts due tp min_rtt updates
-	 	mean_intersend_time.update(new_intersend_mean, cur_time / min_rtt);
+	 	_intersend_time = max(1.0 / new_sending_rate, tmp_old_intersend_time); // to avoid bursts due tp min_rtt updates
+	 	mean_sending_rate.update(new_sending_rate, cur_time / min_rtt);
 	 	return;
 	}
 
-	mean_intersend_time.update(new_intersend_mean, cur_time / min_rtt);
+	mean_sending_rate.update(new_sending_rate, cur_time / min_rtt);
 
-	Exponential distr(1.0/mean_intersend_time, prng);
-	_intersend_time = distr.sample();
-	// _intersend_time = mean_intersend_time;
+	// do {
+		// Exponential distr(1.0 / mean_sending_rate, prng);
+		// _intersend_time = 1.0 / distr.sample();
+	// } while (_intersend_time > 3.0 / mean_sending_rate);
+	// cout << mean_sending_rate << " " << _intersend_time << endl;
+
+	// Exponential distr(1/(mean_intersend_time*0.2), prng);
+	// _intersend_time = mean_intersend_time*0.8 + distr.sample();
+
+	_intersend_time = 1/mean_sending_rate;
+
+	// cout << mean_intersend_time << " " << _intersend_time << " " << intersend_ewma << endl;
 }
 
 void MarkovianCC::onACK(int ack, double receiver_timestamp __attribute((unused))) {
@@ -183,7 +256,7 @@ void MarkovianCC::onACK(int ack, double receiver_timestamp __attribute((unused))
 	rtt_acked_ewma.round();
 
 	// update intersend_ewma
-	if (prev_ack_sent_time != 0.0) { 
+	if (prev_ack_sent_time != 0.0) {
 		intersend_ewma.update(sent_time - prev_ack_sent_time, \
 			cur_time / min_rtt);
 		intersend_ewma.round();
@@ -205,7 +278,6 @@ void MarkovianCC::onACK(int ack, double receiver_timestamp __attribute((unused))
 
 	// if (_the_window < numeric_limits<int>::max())
 	// 	_the_window = numeric_limits<int>::max();
-
 }
 
 void MarkovianCC::onLinkRateMeasurement( double s_measured_link_rate __attribute((unused)) ) {

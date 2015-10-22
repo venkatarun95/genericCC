@@ -12,7 +12,7 @@ from parsing_scripts import parse_tcptrace
 linkspeed_range = [2, 15] # in MBps
 minrtt_range = [20.0, 200.0] # in ms
 num_senders_list = [1, 2, 4, 8, 16, 32, 64]
-delta_list = [1.0]
+delta_list = [0.1, 1.0, 0.01]
 rat_source = "input-rats/nash-eval/"
 rat_list = []
 

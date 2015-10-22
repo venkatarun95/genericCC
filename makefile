@@ -1,7 +1,7 @@
 MEMORY_STYLE := ./protobufs-default
 
 CXX := g++
-CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -g -O2 
+CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -pg -O3 
 INCLUDES :=	-I./protobufs-default -I./udt
 
 LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc -ludt $(MEMORY_STYLE)/libremyprotos.a
@@ -12,7 +12,7 @@ all: sender receiver prober
 .PHONY: all
 
 sender: $(OBJECTS) sender.o
-	$(CXX) $(inputs) -o $(output) $(LIBS)
+	$(CXX) $(inputs) -pg -o $(output) $(LIBS)
 
 prober: prober.o udp-socket.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
