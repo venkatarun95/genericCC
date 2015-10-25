@@ -1,3 +1,4 @@
+#include <tuple>
 #include <vector>
 
 struct TcpHeader{
@@ -88,6 +89,7 @@ class TcpConnection {
   // packet has been sent.
   bool est_term_pkt_sent;
 
+
   // Receiver's side of things
 
 	// Implements a sliding window. Of constant size equal to receive
@@ -97,13 +99,18 @@ class TcpConnection {
 	unsigned rcv_window_pos;
 	unsigned expected_seq_no;
 
+
   // Sender's side of things
 
   // In seq num.
   unsigned last_transmitted_pkt;
   // In seq num. Last packet acked by the other side
   unsigned last_acked_pkt;
-  // In pkts. Window size for flow control.
+  // Sender window. bool stores whether the packet has been acked.
+  std::vector< std::pair<bool, TcpHeader> > snd_window;
+  // Position of oldest packet in snd_window;
+  unsigned snd_window_pos;
+  // Number of packets in snd_window
   unsigned snd_window_size;
   // Whether or not a retransmission is pending. This should be
   // irrespective of congestion window or pacing and hence elicits a
@@ -113,10 +120,14 @@ class TcpConnection {
   bool want_to_close;
 
 
+  // Called at the sender's side
   void handle_dupack();
-
-  void register_ack(unsigned ack_num);
+  // Called at the sender's side
+  void register_ack(TcpHeader pkt);
+  // Called at the receiver's side
   void register_data_pkt(unsigned seq_num);
+  // Called at the sender's side
+  void register_sent_packet(TcpHeader pkt);
 
 public:
 	TcpConnection(unsigned host_id, unsigned flow_id, unsigned window_size=65536)
@@ -132,7 +143,9 @@ public:
 		expected_seq_no(1),
     last_transmitted_pkt(0),
     last_acked_pkt(0),
-    snd_window_size(window_size),
+    snd_window(window_size, std::make_pair(false, TcpHeader())),
+    snd_window_pos(0),
+    snd_window_size(0),
     retransmission_pending(false),
     want_to_close(false)
 	{}
@@ -158,7 +171,8 @@ public:
   // available at 'get_next_pkt'.
   void establish_connection();
   // Actively terminates connection by making the right packet
-  // available at 'get_next_pkt'.
+  // available at 'get_next_pkt'. Should be called only by sender (this
+  // is the reason bidirectional data transfer does not work yet)
   void close_connection();
 
   ConnState get_state() {return state;}

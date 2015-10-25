@@ -7,8 +7,15 @@
 using namespace std;
 
 string TcpHeader::tcpdump() {
-  string res = to_string(type) + " " + to_string(seq_num) + " " + \
-    to_string(ack_num) + " " + to_string(size);
+  string type_str = "ERR";
+  switch (type) {
+    case PacketType::PURE_ACK: type_str = "ACK"; break;
+    case PacketType::PURE_DATA: type_str = "DAT"; break;
+    case PacketType::SYN: type_str = "SYN"; break;
+    case PacketType::FIN: type_str = "FIN"; break;
+  }
+  string res = type_str + " seq " + to_string(seq_num) + ", ack " + \
+    to_string(ack_num) + ", " + to_string(size) + " bytes";
   return res;
 }
 
@@ -32,28 +39,74 @@ void TcpConnection::register_data_pkt(unsigned seq_num) {
   ack_pending = true;
 }
 
-void TcpConnection::register_ack(unsigned ack_num) {
-  assert(ack_num > last_acked_pkt);
-  if (ack_num == last_acked_pkt + 1) {
-    num_dupacks ++;
-    if (num_dupacks >= 3)
-    handle_dupack();
-    return;
-  }
+void TcpConnection::register_ack(TcpHeader pkt) {
+  assert(pkt.type != TcpHeader::PacketType::PURE_DATA);
+  if (pkt.type == TcpHeader::PacketType::PURE_ACK) {
+    unsigned ack_num = pkt.ack_num;
+    assert(ack_num > last_acked_pkt);
+    // Check for dupack
+    if (ack_num == last_acked_pkt + 1) {
+      num_dupacks ++;
+      if (num_dupacks >= 3)
+        handle_dupack();
+      //return;
+    }
+    else {
+      num_dupacks = 0;
+      last_acked_pkt = ack_num - 1;
+      assert (last_acked_pkt <= last_transmitted_pkt);
 
-  num_dupacks = 0;
-  assert(ack_num == last_acked_pkt + 2); // SACK not yet supported
-  last_acked_pkt = ack_num - 1;
-  assert (last_acked_pkt <= last_transmitted_pkt);
-  if (want_to_close && last_acked_pkt == last_transmitted_pkt) {
-    want_to_close = false;
-    state = ConnState::FIN_WAIT;
-    est_term_pkt_sent = false;
+      // If we want to close, check if all outstanding pkts have been acked.
+      if (want_to_close && last_acked_pkt == last_transmitted_pkt) {
+        want_to_close = false;
+        state = ConnState::FIN_WAIT;
+        est_term_pkt_sent = false;
+      }
+    }
+  }
+  if (num_dupacks > 0)
+    return;
+
+  // Find the packet in the snd_window.
+  // We trust that this loop won't run too many iterations.
+  unsigned i = snd_window_pos;
+  while ( true ) {
+    if (snd_window[i].second.type == TcpHeader::PacketType::PURE_DATA
+      && pkt.type == TcpHeader::PacketType::PURE_ACK) {
+      if (snd_window[i].second.seq_num == pkt.ack_num - 1) {
+        break;
+      }
+    }
+    else if (snd_window[i].second.type == TcpHeader::PacketType::SYN
+      && snd_window[i].second.seq_num == 1) // ack to third SYN packet
+      break;
+    else if (snd_window[i].second.type == pkt.type) // for SYN and FIN pkts
+        break;
+    i = (i + 1) % snd_window.size();
+    // Assert: Unknown ack.
+    cout << i << " " << snd_window_pos << " " << ((i - snd_window_pos) % snd_window.size()) << " " << snd_window_size << endl;
+    assert(((i - snd_window_pos) % snd_window.size()) < snd_window_size);
+  }
+  // This is not a dupack, as they were caught earlier in the function.
+  assert(snd_window[i].first == false);
+  snd_window[i] = make_pair(false, pkt);
+  while (snd_window[snd_window_pos].first == false && snd_window_size > 0) {
+    // i = (i + 1) % snd_window.size();
+    snd_window_size --;
+    snd_window_pos = (snd_window_pos + 1) % snd_window.size();
   }
 }
 
+void TcpConnection::register_sent_packet(TcpHeader pkt) {
+  assert(snd_window_size < snd_window.size());
+  assert(pkt.valid);
+  snd_window[(snd_window_pos + snd_window_size) % snd_window.size()] =
+    make_pair(false, pkt);
+  snd_window_size ++;
+}
+
 void TcpConnection::handle_dupack() {
-  cout << "Warning: Dupack handling not yet supported" << endl;
+  retransmission_pending = true;
 }
 
 void TcpConnection::register_received_packet(TcpHeader pkt) {
@@ -68,6 +121,11 @@ void TcpConnection::register_received_packet(TcpHeader pkt) {
       est_term_pkt_sent = false;
     break;
     case ConnState::SYN_SENT:
+      register_ack(pkt);
+      snd_window.resize(std::min((unsigned)snd_window.size(), pkt.seq_num),
+        make_pair(false, TcpHeader()));
+      // receiver should have already computed the correct size
+      assert(snd_window.size() == pkt.seq_num);
       state = ConnState::ESTABLISHED;
       est_term_pkt_sent = false; // this causes the third SYN to be sent.
     break;
@@ -83,7 +141,7 @@ void TcpConnection::register_received_packet(TcpHeader pkt) {
         register_data_pkt(pkt.seq_num);
       }
       else if (pkt.type == TcpHeader::PacketType::PURE_ACK)
-        register_ack(pkt.ack_num);
+        register_ack(pkt);
       else if (pkt.type == TcpHeader::PacketType::FIN) {
         assert (pkt.seq_num == 1 && pkt.ack_num == 0 && pkt.size == 0);
         state = ConnState::CLOSE_WAIT;
@@ -95,6 +153,7 @@ void TcpConnection::register_received_packet(TcpHeader pkt) {
     case ConnState::FIN_WAIT:
       assert(pkt.seq_num == 2 && pkt.type == TcpHeader::PacketType::FIN);
       assert(pkt.ack_num == 0 && pkt.size == 0);
+      register_ack(pkt);
       state = ConnState::CLOSED;
       est_term_pkt_sent = true;
     break;
@@ -112,34 +171,44 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
   TcpHeader header;
   header.flow_id = flow_id;
   header.src_id = host_id;
-  if (last_transmitted_pkt - last_acked_pkt == snd_window_size) {
+  if (last_transmitted_pkt - last_acked_pkt == snd_window.size()) {
     header.valid = false;
     return header;
   }
   switch (state) {
     case ConnState::ESTABLISHED:
-      assert(last_transmitted_pkt - last_acked_pkt < snd_window_size);
+      assert(last_transmitted_pkt - last_acked_pkt < snd_window.size());
       if (size > 0) {
         if (est_term_pkt_sent == false) { // Third SYN packet
           header.type = TcpHeader::PacketType::SYN;
           header.seq_num = 1;
           last_transmitted_pkt = 1;
           est_term_pkt_sent = true;
+          header.ack_num = 0;
+          header.size = size;
+          header.sender_timestamp = cur_time;
+          header.receiver_timestamp = 0;
+          header.valid = true;
+          register_sent_packet(header);
         }
         else {
           header.type = TcpHeader::PacketType::PURE_DATA;
-          if (retransmission_pending)
-            header.seq_num = last_transmitted_pkt;
+          if (retransmission_pending) {
+            assert(!snd_window[snd_window_pos].first);
+            header = snd_window[snd_window_pos].second;
+            retransmission_pending = false;
+          }
           else {
             header.seq_num = last_transmitted_pkt + 1;
             last_transmitted_pkt ++;
+            header.ack_num = 0;
+            header.size = size;
+            header.sender_timestamp = cur_time;
+            header.receiver_timestamp = 0;
+            header.valid = true;
+            register_sent_packet(header);
           }
         }
-        header.ack_num = 0;
-        header.size = size;
-        header.sender_timestamp = cur_time;
-        header.receiver_timestamp = 0;
-        header.valid = true;
       }
       else if (ack_pending) {
         ack_pending = false;
@@ -170,12 +239,13 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
       }
       est_term_pkt_sent = true;
       header.type = TcpHeader::PacketType::SYN;
-      header.seq_num = snd_window_size;
+      header.seq_num = snd_window.size();
       header.ack_num = 0;
       header.size = 0;
       header.sender_timestamp = cur_time;
       header.receiver_timestamp = 0;
       header.valid = true;
+      register_sent_packet(header);
     break;
 
     case ConnState::SYN_RECEIVED:
@@ -207,6 +277,7 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
       header.sender_timestamp = cur_time;
       header.receiver_timestamp = 0;
       header.valid = true;
+      register_sent_packet(header);
     break;
 
     case ConnState::CLOSE_WAIT:
@@ -257,29 +328,43 @@ void TcpConnection::close_connection() {
 
 void TcpConnection::interactive_test() {
 	int window_size;
+  // bool ans;
 	cout << "Enter window size: ";
 	cin >> window_size;
   TcpConnection snd(0, 1, window_size);
   TcpConnection rcv(1, 0, window_size);
 
   int data_remaining = 15001;
+  double cur_time = 0.0;
+
   snd.establish_connection();
   while (snd.get_state() != ConnState::CLOSED ||
   snd.get_state() != ConnState::CLOSED) {
-    TcpHeader header = snd.get_next_pkt(0.0, min(1500, data_remaining));
+    if (!snd.transmit_immediately())
+      cur_time += 0.1;
+    TcpHeader header = snd.get_next_pkt(cur_time, min(1500, data_remaining));
     if (header.valid) {
       data_remaining -= header.size;
       if (data_remaining <= 0)
         snd.close_connection();
-      cout << "Snd: " << rcv.get_state() << " " << header.tcpdump() << endl;
+      cout << "Snd (" << cur_time << " ms): " << rcv.get_state() << " "
+        << header.tcpdump() << endl;
+
+      // cin >> ans; // ask user if packet should be forwarded
+      // if (ans)
       rcv.register_received_packet(header);
     }
     else
       cout << "Snd: no packet " << rcv.get_state() << " " << endl;
 
-    header = rcv.get_next_pkt(0.0, 0);
+    if (!rcv.transmit_immediately())
+      cur_time += 0.1;
+    header = rcv.get_next_pkt(cur_time, 0);
     if (header.valid) {
-      cout << "Rcv: " << rcv.get_state() << " " << header.tcpdump() << endl;
+      cout << "Rcv (" << cur_time << " ms): " << rcv.get_state() << " "
+        << header.tcpdump() << endl;
+      // cin >> ans; // ask user if packet should be forwarded
+      // if (ans)
       snd.register_received_packet(header);
     }
     else
