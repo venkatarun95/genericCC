@@ -24,7 +24,7 @@ struct TcpHeader{
 
   // Get a string representing the packet.
   // TODO(venkat) : make it the same as what is printed by tcpdump
-  std::string tcpdump();
+  std::string tcpdump() const;
 };
 
 
@@ -73,8 +73,11 @@ class TcpConnection {
 
   // Common between sender and receiver
 
+ public:
   enum ConnState { BEGIN, SYN_SENT, SYN_RECEIVED, ESTABLISHED, FIN_WAIT, \
     CLOSE_WAIT, CLOSED };
+
+ private:
   ConnState state;
   unsigned num_dupacks;
   // Whether or not there is an ack pending that needs to be sent
@@ -104,7 +107,8 @@ class TcpConnection {
 
   // In seq num.
   unsigned last_transmitted_pkt;
-  // In seq num. Last packet acked by the other side
+  // Slight misnomer. Last acked pkt such that all previous pkts have
+  // also been acked. In seq num.
   unsigned last_acked_pkt;
   // Sender window. bool stores whether the packet has been acked.
   std::vector< std::pair<bool, TcpHeader> > snd_window;
@@ -120,18 +124,39 @@ class TcpConnection {
   bool want_to_close;
 
 
+  // For maintaining statistics (at sender)
+
+  const double alpha_smooth_rtt = 1.0/16.0;
+  double smooth_rtt;
+  // For avg. RTT
+  double sum_rtt;
+  int num_bytes_sent;
+  int num_pkts_sent;
+  int num_bytes_acked;
+  int num_pkts_acked;
+  // Timestamp when transmission started (ie. 3rd SYN pkt).
+  double data_transmission_start_time;
+  // Always stores time when last ack was received
+  double data_transmission_end_time;
+
+
   // Called at the sender's side
   void handle_dupack();
   // Called at the sender's side
-  void register_ack(TcpHeader pkt);
+  void register_ack(const TcpHeader& pkt);
   // Called at the receiver's side
   void register_data_pkt(unsigned seq_num);
   // Called at the sender's side
-  void register_sent_packet(TcpHeader pkt);
+  void register_sent_packet(const TcpHeader& pkt);
+  // Called when a new ack is received before it is removed from
+  // snd_window with `ack=true`.
+  // Called before a data containing packet is sent (in get_next_pkt)
+  // is sent with `ack=false`.
+  void track_stats(const TcpHeader& pkt, double cur_time, bool ack);
 
-public:
-	TcpConnection(unsigned host_id, unsigned flow_id, unsigned window_size=65536)
-	:	state(ConnState::BEGIN),
+ public:
+  TcpConnection(unsigned host_id=0, unsigned flow_id=0, unsigned window_size=65536)
+  :	state(ConnState::BEGIN),
     num_dupacks(0),
     ack_pending(false),
     host_id(host_id),
@@ -147,13 +172,21 @@ public:
     snd_window_pos(0),
     snd_window_size(0),
     retransmission_pending(false),
-    want_to_close(false)
+    want_to_close(false),
+    smooth_rtt(-1.0),
+    sum_rtt(0.0),
+    num_bytes_sent(0),
+    num_pkts_sent(0),
+    num_bytes_acked(0),
+    num_pkts_acked(0),
+    data_transmission_start_time(-1.0),
+    data_transmission_end_time(-1.0)
 	{}
 
 	static void interactive_test();
 
   // Should be called as soon as a packet is received.
-	void register_received_packet(TcpHeader pkt);
+	void register_received_packet(const TcpHeader& pkt, double cur_time);
   // Returns header for next packet to transmit. If no transmission is
   // required, 'valid' bit in header is set to false. 'size' gives the
   // number of bytes of data to transmit with the packet. 'cur_time'
@@ -166,7 +199,7 @@ public:
   TcpHeader get_next_pkt(double cur_time, unsigned size=0);
   // Returns true if a packet needs to be transmitted immediately or
   // if we can wait for packet pacing.
-  bool transmit_immediately();
+  bool transmit_immediately() const;
   // Actively established connection by making the right packet
   // available at 'get_next_pkt'.
   void establish_connection();
@@ -175,5 +208,14 @@ public:
   // is the reason bidirectional data transfer does not work yet)
   void close_connection();
 
-  ConnState get_state() {return state;}
+  // Getter functions
+  ConnState get_state() const {return state;}
+  unsigned get_num_bytes_sent() const { return num_bytes_sent; }
+  unsigned get_num_bytes_acked() const { return num_bytes_acked; }
+  // Useful for congestion control
+  unsigned get_snd_window_size() const {return snd_window_size; }
+  double get_data_transmit_duration() const
+    { return data_transmission_end_time - data_transmission_start_time; }
+  double get_avg_rtt() const { return sum_rtt / num_pkts_sent; }
+  unsigned get_num_dupacks() const { return num_dupacks; }
 };

@@ -49,7 +49,7 @@ int main( int argc, char *argv[] ) {
 				fprintf( stderr, "Could not parse %s.\n", filename.c_str() );
 				exit( 1 );
 			}
-	
+
 			whiskers = WhiskerTree( tree );
 			ratFound = true;
 
@@ -70,7 +70,7 @@ int main( int argc, char *argv[] ) {
 			offduration	= atoi( arg.substr( 12 ).c_str() );
 		else if( arg.substr( 0, 11 ) == "onduration=" )
 			onduration = atoi( arg.substr( 11 ).c_str() );
-		else if( arg.substr( 0, 9 ) == "linkrate=" ) 
+		else if( arg.substr( 0, 9 ) == "linkrate=" )
 			TRAINING_LINK_RATE = atof( arg.substr( 9 ).c_str() );
 		else if( arg.substr( 0, 8 ) == "linklog=" ) {
 			LINK_LOGGING_FILENAME = arg.substr( 8 );
@@ -111,7 +111,7 @@ int main( int argc, char *argv[] ) {
 	}
 
 	if ( serverip == "" || sourceip == "") {
-		fprintf( stderr, "Usage: sender serverip=(ipaddr) sourceip=(ipaddr) [if=(ratname)] [delta=(for NashCC)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc|nash] [linkrate=(packets/sec)] [linklog=filename][serverport=(port)] [sourceport=(port)]\n");
+		fprintf( stderr, "Usage: sender serverip=(ipaddr) sourceip=(ipaddr) [if=(ratname)] [delta=(for NashCC)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc|nash] [traffic_type=[deterministic|exponential][byte_switched]] [linkrate=(packets/sec)] [linklog=filename][serverport=(port)] [sourceport=(port)]\n");
 		exit(1);
 	}
 

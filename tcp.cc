@@ -6,7 +6,7 @@
 
 using namespace std;
 
-string TcpHeader::tcpdump() {
+string TcpHeader::tcpdump() const {
   string type_str = "ERR";
   switch (type) {
     case PacketType::PURE_ACK: type_str = "ACK"; break;
@@ -39,7 +39,7 @@ void TcpConnection::register_data_pkt(unsigned seq_num) {
   ack_pending = true;
 }
 
-void TcpConnection::register_ack(TcpHeader pkt) {
+void TcpConnection::register_ack(const TcpHeader& pkt) {
   assert(pkt.type != TcpHeader::PacketType::PURE_DATA);
   if (pkt.type == TcpHeader::PacketType::PURE_ACK) {
     unsigned ack_num = pkt.ack_num;
@@ -49,11 +49,10 @@ void TcpConnection::register_ack(TcpHeader pkt) {
       num_dupacks ++;
       if (num_dupacks >= 3)
         handle_dupack();
-      //return;
+      return;
     }
     else {
       num_dupacks = 0;
-      last_acked_pkt = ack_num - 1;
       assert (last_acked_pkt <= last_transmitted_pkt);
 
       // If we want to close, check if all outstanding pkts have been acked.
@@ -84,20 +83,22 @@ void TcpConnection::register_ack(TcpHeader pkt) {
         break;
     i = (i + 1) % snd_window.size();
     // Assert: Unknown ack.
-    cout << i << " " << snd_window_pos << " " << ((i - snd_window_pos) % snd_window.size()) << " " << snd_window_size << endl;
     assert(((i - snd_window_pos) % snd_window.size()) < snd_window_size);
   }
   // This is not a dupack, as they were caught earlier in the function.
   assert(snd_window[i].first == false);
-  snd_window[i] = make_pair(false, pkt);
-  while (snd_window[snd_window_pos].first == false && snd_window_size > 0) {
-    // i = (i + 1) % snd_window.size();
+  snd_window[i].first = true;
+  while (snd_window[snd_window_pos].first == true && snd_window_size > 0) {
+    if (snd_window[snd_window_pos].second.size > 0) {
+      assert(snd_window[snd_window_pos].second.seq_num == last_acked_pkt + 1);
+      last_acked_pkt = snd_window[snd_window_pos].second.seq_num;
+    }
     snd_window_size --;
     snd_window_pos = (snd_window_pos + 1) % snd_window.size();
   }
 }
 
-void TcpConnection::register_sent_packet(TcpHeader pkt) {
+void TcpConnection::register_sent_packet(const TcpHeader& pkt) {
   assert(snd_window_size < snd_window.size());
   assert(pkt.valid);
   snd_window[(snd_window_pos + snd_window_size) % snd_window.size()] =
@@ -109,7 +110,36 @@ void TcpConnection::handle_dupack() {
   retransmission_pending = true;
 }
 
-void TcpConnection::register_received_packet(TcpHeader pkt) {
+void TcpConnection::track_stats(const TcpHeader& pkt, double cur_time, bool ack) {
+  if (ack) {
+    assert(pkt.type == TcpHeader::PacketType::PURE_ACK);
+    assert(cur_time > data_transmission_end_time);
+    if (smooth_rtt == -1.0) {
+      smooth_rtt = cur_time - pkt.sender_timestamp;
+    }
+    smooth_rtt = alpha_smooth_rtt * (cur_time - pkt.sender_timestamp) +
+      (1 - alpha_smooth_rtt) * smooth_rtt;
+    // Use cur_time and not receiver_timestamp because the clocks may
+    // not be in sync in case of real world usage.
+    sum_rtt += cur_time - pkt.sender_timestamp;
+    num_bytes_acked += pkt.size; // Assuming it is not a dupack
+    num_pkts_acked += 1;
+    data_transmission_end_time = cur_time;
+  }
+  else {
+    if (!(pkt.type == TcpHeader::PacketType::PURE_DATA
+      || (pkt.type == TcpHeader::PacketType::SYN && pkt.seq_num == 1)))
+      return;
+    assert(pkt.size > 0);
+    if (data_transmission_start_time == -1.0) {
+      data_transmission_start_time = cur_time;
+    }
+    num_bytes_sent += pkt.size;
+    num_pkts_sent += 1;
+  }
+}
+
+void TcpConnection::register_received_packet(const TcpHeader& pkt, double cur_time) {
   assert(pkt.valid);
   echo_timestamp = pkt.sender_timestamp;
   switch(state) {
@@ -132,16 +162,18 @@ void TcpConnection::register_received_packet(TcpHeader pkt) {
     case ConnState::SYN_RECEIVED:
       assert(pkt.seq_num == 1 && pkt.ack_num == 0);
       assert(pkt.type == TcpHeader::PacketType::SYN);
-      pkt.type = TcpHeader::PacketType::PURE_DATA;
       state = ConnState::ESTABLISHED;
       // Note no break. This is a data packet too.
     case ConnState::ESTABLISHED:
-      if (pkt.type == TcpHeader::PacketType::PURE_DATA){
+      if (pkt.type == TcpHeader::PacketType::PURE_DATA
+        || pkt.type == TcpHeader::PacketType::SYN) {
         assert(pkt.size > 0);
         register_data_pkt(pkt.seq_num);
       }
-      else if (pkt.type == TcpHeader::PacketType::PURE_ACK)
+      else if (pkt.type == TcpHeader::PacketType::PURE_ACK) {
+        track_stats(pkt, cur_time, true);
         register_ack(pkt);
+      }
       else if (pkt.type == TcpHeader::PacketType::FIN) {
         assert (pkt.seq_num == 1 && pkt.ack_num == 0 && pkt.size == 0);
         state = ConnState::CLOSE_WAIT;
@@ -189,6 +221,7 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
           header.sender_timestamp = cur_time;
           header.receiver_timestamp = 0;
           header.valid = true;
+          track_stats(header, cur_time, false);
           register_sent_packet(header);
         }
         else {
@@ -198,6 +231,9 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
             header = snd_window[snd_window_pos].second;
             retransmission_pending = false;
           }
+          else if (want_to_close){
+            header.valid = false;
+          }
           else {
             header.seq_num = last_transmitted_pkt + 1;
             last_transmitted_pkt ++;
@@ -206,6 +242,7 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
             header.sender_timestamp = cur_time;
             header.receiver_timestamp = 0;
             header.valid = true;
+            track_stats(header, cur_time, false);
             register_sent_packet(header);
           }
         }
@@ -304,7 +341,7 @@ TcpHeader TcpConnection::get_next_pkt(double cur_time, unsigned size) {
   return header;
 }
 
-bool TcpConnection::transmit_immediately() {
+bool TcpConnection::transmit_immediately() const {
   if (ack_pending || retransmission_pending || !est_term_pkt_sent)
     return true;
   return false;
@@ -316,6 +353,15 @@ void TcpConnection::establish_connection() {
 }
 
 void TcpConnection::close_connection() {
+  if (state == ConnState::BEGIN || state == ConnState::SYN_SENT
+    || state == ConnState::SYN_RECEIVED) {
+    cerr << "Warning: Trying to close connection that has not been\
+    established yet. Ignoring close instruction." << endl;
+    return;
+  }
+  if (state != ConnState::ESTABLISHED) {
+    return; // Already closing
+  }
   if (last_transmitted_pkt == last_acked_pkt) {
     state = ConnState::FIN_WAIT;
     est_term_pkt_sent = false;
@@ -352,7 +398,7 @@ void TcpConnection::interactive_test() {
 
       // cin >> ans; // ask user if packet should be forwarded
       // if (ans)
-      rcv.register_received_packet(header);
+      rcv.register_received_packet(header, cur_time);
     }
     else
       cout << "Snd: no packet " << rcv.get_state() << " " << endl;
@@ -365,7 +411,7 @@ void TcpConnection::interactive_test() {
         << header.tcpdump() << endl;
       // cin >> ans; // ask user if packet should be forwarded
       // if (ans)
-      snd.register_received_packet(header);
+      snd.register_received_packet(header, cur_time);
     }
     else
       cout << "Rcv: no packet" << rcv.get_state() << " " << endl;

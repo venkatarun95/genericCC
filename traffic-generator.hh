@@ -10,7 +10,8 @@
 #include "exponential.hh"
 #include "random.hh"
 #include "remycc.hh"
-
+#include "sys/types.h" // for getting the pid of current process
+#include "unistd.h"
 
 template<class T>
 class TrafficGenerator{
@@ -52,7 +53,7 @@ public:
 			int end_pos = traffic_params.find(',', start_pos);
 			if (end_pos == std::string::npos)
 				end_pos = traffic_params.length();
-			
+
 			std::string arg = traffic_params.substr(start_pos, end_pos);
 			if (arg == "exponential")
 				_traffic_type = TrafficType::EXPONENTIAL_ON_OFF;
@@ -64,7 +65,7 @@ public:
 			else if (arg.substr(0, 11) == "num_cycles=")
 				_traffic_params._on_off.num_cycles = (unsigned int) \
 					atoi(arg.substr(11).c_str());
-			else 
+			else
 				std::cout << "Unrecognised parameter: " << arg << endl;
 
 			start_pos = end_pos + 1;
@@ -106,12 +107,12 @@ void TrafficGenerator<T>::send_data(int seed, int id) {
 template<class T>
 void TrafficGenerator<T>::spawn_senders(int num_senders) {
 	PRNG prng(global_PRNG());
-	
+
 	// Have only one sender for now, since the NAT creates issues for multiple senders anyway
 	assert(num_senders == 1); // feature not yet implemented
-	
+
 	int seed = boost::random::uniform_int_distribution<>()(prng);
-	int src_id = boost::random::uniform_int_distribution<>()(prng);
+	int src_id = getpid();
 	std::cout<<"Assigning Source ID: "<<src_id<<std::endl;
 	send_data(seed, src_id);
 }

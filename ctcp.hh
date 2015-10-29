@@ -7,17 +7,16 @@
 #include <iostream>
 #include <thread>
 
-#include "tcp-header.hh"
+#include "tcp.hh"
 #include "udp-socket.hh"
 
 using namespace std;
 
-#define packet_size 1500
-#define data_size (packet_size-sizeof(TCPHeader))
-
 template <class T>
 class CTCP {
 public:
+  static const unsigned packet_size = 1500;
+  static const unsigned data_size = (packet_size-16);
   enum ConnectionType{ SENDER, RECEIVER };
 
 private:
@@ -33,16 +32,8 @@ private:
 
   double _last_send_time;
 
-  int _packets_sent;
-  int _largest_ack;
-
-  double tot_time_transmitted;
-  double tot_delay;
-  int tot_bytes_transmitted;
-  int tot_packets_transmitted;
-
   // buffer used for storing send and received packets
-  char buf[packet_size];
+  char buf[CTCP::packet_size];
   // time at which the latest flow started
   chrono::high_resolution_clock::time_point start_time_point;
 
@@ -51,7 +42,7 @@ private:
 
   void tcp_handshake();
   // Only function that actually sends packets
-  void send_packet(int seq_num);
+  void send_packet(const TcpHeader& header);
 
 public:
 
@@ -64,12 +55,6 @@ public:
     dstaddr( ipaddr ),
     dstport( port ),
     _last_send_time( 0.0 ),
-    _packets_sent( 0 ),
-    _largest_ack( -1 ),
-    tot_time_transmitted( 0 ),
-    tot_delay( 0 ),
-    tot_bytes_transmitted( 0 ),
-    tot_packets_transmitted( 0 ),
     // buf(nullptr),
     start_time_point(),
     flow_id( 0 ),
@@ -89,12 +74,6 @@ public:
     dstaddr( other.dstaddr ),
     dstport( other.dstport ),
     _last_send_time( 0.0 ),
-    _packets_sent( 0 ),
-    _largest_ack( -1 ),
-    tot_time_transmitted( 0 ),
-    tot_delay( 0 ),
-    tot_bytes_transmitted( 0 ),
-    tot_packets_transmitted( 0 ),
     start_time_point(),
     flow_id( 0 ),
     src_id( 0 )
