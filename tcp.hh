@@ -1,6 +1,15 @@
 #include <tuple>
 #include <vector>
 
+// This module implements the flow control and reliability aspects of
+// TCP. The congestion control is meant to be implemented separately.
+// A third module is needed to tie this, the congestion control and the
+// 'actual transmission' together. That is, this deals only with the
+// header structure and is invariant to where it is actually used (say
+// in the real world over TCP, in ns-2, in some other simulator, ...).
+// It works based on a timestamp of type double that is assumed to be
+// in ms.
+
 struct TcpHeader{
 
   enum PacketType { PURE_ACK, PURE_DATA, SYN, FIN };
@@ -54,6 +63,21 @@ class TcpConnection {
   // third SYN packet, seq_num=1.
   // In the first and second FIN packet, seq_num=1 and 2 respectively.
   // ack_num remains 0 in all these packets.
+  //
+  //
+  // Loss Recovery Protocol
+  //
+  // Relevant RFCs:-
+  // RFC 6298 - Retransmit timeout calculation
+  // RFC 3782 - NewReno modification to fast recovery algorithm
+  // RFC 2581 - TCP Congestion Control
+  //
+  // On retransmit timeout or 3 dupacks, retransmits the earliest
+  // unacknowledged packet. In case of more than 3 dupacks, does not
+  // retransmit any more. This algorithms performs poorly in case
+  // multiple successice packets are lost.
+  // TODO(venkat): Implement the NewReno modification to help deal with
+  // the case when multiple successive packets are lost.
   //
   //
   // NOTES:
@@ -120,14 +144,33 @@ class TcpConnection {
   // irrespective of congestion window or pacing and hence elicits a
   // true from transmit_immediately.
   bool retransmission_pending;
+  // > 0 iff fast retransmit mode is on ie. if all unacked
+  // pkts at last dupack based loss detection have not been acked.
+  // Stores the seq_num of pkt which must be cumulatively acked for us
+  // to move out of fast retransmit.
+  unsigned fast_retransmit_limit;
   // Set when close_connection is called and before all pkts are acked.
   bool want_to_close;
+  // Retransmission timeout estimate (in ms). Maintained according to
+  // RFC 6298.
+  // TODO(venkat): Implement RFC 6298 Section 5.7
+  double rto;
+  // Timestamp (in ms) at which retransmit timeout should occur. Equals
+  // -1.0 when timer is off (ie. before starting and after all pkts
+  // have been acked). Here we deviate from RFC 6298 Section 5 because
+  // it recommends we close the timer when all 'data' has been acked.
+  double rtx_timeout;
+  // Used for RTO calculation (in ms)
+  const double clock_granularity = 1.0;
+  const double alpha_smooth_rtt = 1.0/8.0;
+  const double alpha_rtt_variation = 1.0/4.0;
+  // These are still updated in track_stats()
+  double smooth_rtt;
+  double rtt_variation;
 
 
   // For maintaining statistics (at sender)
 
-  const double alpha_smooth_rtt = 1.0/16.0;
-  double smooth_rtt;
   // For avg. RTT
   double sum_rtt;
   int num_bytes_sent;
@@ -148,6 +191,7 @@ class TcpConnection {
   void register_data_pkt(unsigned seq_num);
   // Called at the sender's side
   void register_sent_packet(const TcpHeader& pkt);
+  // Called at the sender's size only.
   // Called when a new ack is received before it is removed from
   // snd_window with `ack=true`.
   // Called before a data containing packet is sent (in get_next_pkt)
@@ -172,8 +216,12 @@ class TcpConnection {
     snd_window_pos(0),
     snd_window_size(0),
     retransmission_pending(false),
+    fast_retransmit_limit(0),
     want_to_close(false),
+    rto(1000.0), // Initial RTO of 1 sec
+    rtx_timeout(-1.0),
     smooth_rtt(-1.0),
+    rtt_variation(-1.0),
     sum_rtt(0.0),
     num_bytes_sent(0),
     num_pkts_sent(0),
@@ -202,7 +250,7 @@ class TcpConnection {
   bool transmit_immediately() const;
   // Actively established connection by making the right packet
   // available at 'get_next_pkt'.
-  void establish_connection();
+  void establish_connection(double cur_time);
   // Actively terminates connection by making the right packet
   // available at 'get_next_pkt'. Should be called only by sender (this
   // is the reason bidirectional data transfer does not work yet)
@@ -212,10 +260,13 @@ class TcpConnection {
   ConnState get_state() const {return state;}
   unsigned get_num_bytes_sent() const { return num_bytes_sent; }
   unsigned get_num_bytes_acked() const { return num_bytes_acked; }
-  // Useful for congestion control
+  // Useful for congestion control. Returns number of pkts Currently
+  // stored in the window.
   unsigned get_snd_window_size() const {return snd_window_size; }
   double get_data_transmit_duration() const
     { return data_transmission_end_time - data_transmission_start_time; }
   double get_avg_rtt() const { return sum_rtt / num_pkts_sent; }
-  unsigned get_num_dupacks() const { return num_dupacks; }
+  // True iff we are in fast retransmit phase.
+  unsigned in_fast_retransmit() const { return fast_retransmit_limit > 0; }
+  double get_rtx_timeout() const { return rtx_timeout; }
 };

@@ -20,35 +20,6 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
 }
 
 template<class T>
-void CTCP<T>::tcp_handshake() {
-  TcpHeader header, ack_header;
-
-  header.seq_num = -1;
-  header.flow_id = -1;
-  header.src_id = -1;
-  header.sender_timestamp = -1;
-  header.receiver_timestamp = -1;
-
-  memcpy( buf, &header, sizeof(TcpHeader) );
-  socket.senddata( buf, CTCP::packet_size, NULL );
-
-  sockaddr_in other_addr;
-  while ( true ) {
-    if (socket.receivedata( buf, CTCP::packet_size, 2000, other_addr ) == 0) {
-      cerr << "Could not establish connection" << endl;
-      continue;
-    }
-    memcpy(&ack_header, buf, sizeof(TcpHeader));
-    if (ack_header.seq_num != -1 || ack_header.flow_id != -1)
-      continue;
-    if (ack_header.sender_timestamp != -1 || ack_header.src_id != -1)
-      continue;
-    break;
-  }
-  cout << "Connection Established." << endl;
-}
-
-template<class T>
 void CTCP<T>::send_packet(const TcpHeader& header) {
   memcpy( buf, &header, sizeof(TcpHeader) );
   socket.senddata( buf, CTCP::packet_size, NULL );
@@ -56,11 +27,11 @@ void CTCP<T>::send_packet(const TcpHeader& header) {
 
 // takes flow_size in milliseconds (byte_switched=false) or in bytes (byte_switched=true)
 template<class T>
-void CTCP<T>::send_data( double flow_size, bool byte_switched, int s_flow_id, int s_src_id ){
+void CTCP<T>::send_data( unsigned flow_size, bool byte_switched, int s_flow_id, int s_src_id ){
   flow_id = s_flow_id;
   src_id = s_src_id;
   TcpConnection conn(src_id, flow_id);
-  conn.establish_connection();
+  conn.establish_connection(0.0);
 
   TcpHeader header;
 
@@ -79,15 +50,22 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int s_flow_id, in
     cur_time = current_timestamp( start_time_point );
 
     // send packets if required
-    while ((conn.get_snd_window_size() < congctrl.get_the_window())
-      and (_last_send_time + congctrl.get_intersend_time() <= cur_time)) {
+    while (((conn.get_snd_window_size() < congctrl.get_the_window())
+      && (_last_send_time + congctrl.get_intersend_time() <= cur_time
+      )) || conn.transmit_immediately()) {
 
-      header = conn.get_next_pkt(cur_time, CTCP::data_size);
+      unsigned size = CTCP::data_size;
+      if (byte_switched)
+        size = min(size, flow_size - conn.get_num_bytes_sent());
+      header = conn.get_next_pkt(cur_time, size);
       if (!header.valid)
         break;
+      if (header.type == TcpHeader::PacketType::SYN && header.size == 0)
+        cout << "Trying to establish connection" << endl;
       send_packet(header);
 
-      congctrl.onPktSent(header.seq_num);
+      if (header.size > 0)
+        congctrl.onPktSent(header.seq_num);
 
       cur_time = current_timestamp(start_time_point);
 
@@ -106,21 +84,21 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int s_flow_id, in
     // decide timeout
     cur_time = current_timestamp(start_time_point);
     double timeout = congctrl.get_intersend_time(); // everything in milliseconds
-    if( congctrl.get_the_window() > 0 )
-      timeout = min(timeout, congctrl.get_intersend_time());
+    if (conn.get_rtx_timeout() != -1.0)
+      timeout = min(timeout, conn.get_rtx_timeout() - cur_time);
     if (conn.transmit_immediately())
       timeout = 0;
 
-    // if (timeout > 0)
-    //   this_thread::yield();
+    if (timeout > 0)
+      this_thread::yield();
 
     // wait for packets
     sockaddr_in other_addr;
     if ( socket.receivedata(buf, CTCP::packet_size, timeout, other_addr) == 0 ) {
       // comes here if there is a timeout
       cur_time = current_timestamp( start_time_point );
-      // if ( cur_time > _last_send_time + congctrl.get_timeout() )
-      //   congctrl.onTimeout();
+      if ( cur_time >= conn.get_rtx_timeout() && conn.get_rtx_timeout() != -1.0)
+        congctrl.onTimeout();
       this_thread::yield();
       continue;
     }
@@ -134,16 +112,18 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int s_flow_id, in
     #ifdef SCALE_SEND_RECEIVE_EWMA
         assert(false);
     #endif
+
     if (header.type == TcpHeader::PacketType::PURE_ACK
-      && conn.get_num_dupacks() == 0)
+      && conn.in_fast_retransmit() == 0) // use only unambiguous acks
       congctrl.onACK(header.ack_num, header.receiver_timestamp);
   }
 
-  cur_time = current_timestamp(start_time_point);
-
   congctrl.close();
 
-  double throughput = conn.get_num_bytes_sent()
+  // Print stats
+  cur_time = current_timestamp(start_time_point);
+
+  double throughput = 1000.0 * conn.get_num_bytes_sent()
     / conn.get_data_transmit_duration();
 
   cout << "\n\nData Successfully Transmitted\n\tThroughput: "

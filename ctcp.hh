@@ -40,7 +40,6 @@ private:
   int flow_id;
   int src_id;
 
-  void tcp_handshake();
   // Only function that actually sends packets
   void send_packet(const TcpHeader& header);
 
@@ -87,7 +86,7 @@ public:
   // byte_switched -- if true interpret flow_size as bytes, interpret
   //     as ms otherwise
   // flow_id, src_id -- are put inside the packet headers
-  void send_data ( double flow_size, bool byte_switched, int s_flow_id, int s_src_id );
+  void send_data ( unsigned flow_size, bool byte_switched, int s_flow_id, int s_src_id );
 
   void listen_for_data ( );
 };
