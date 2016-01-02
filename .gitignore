@@ -31,6 +31,7 @@
 
 # Specific Folders
 udt/*
+*.makepp
 
 # Trace files
 trace*
@@ -40,3 +41,8 @@ tmp*
 
 # Compiled Python
 *.pyc
+
+# Executables
+sender
+receiver
+prober

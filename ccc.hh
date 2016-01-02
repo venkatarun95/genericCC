@@ -22,10 +22,11 @@ public:
   // compensate for this. This decision was made so that the 'send_ewma' and 
   // 'recv_ewma' are not messed with because of the deliberate packet bunching
   virtual void onACK( int ack __attribute((unused)), 
-    double receiver_timestamp __attribute((unused)) ) {std::cout<<"Hello!";}
+    double receiver_timestamp __attribute((unused)), double sent_time __attribute((unused)) ) {std::cout<<"Hello!";}
   virtual void onPktSent( int seq_num __attribute((unused)) ) { }
-  
+  virtual void onDupACK() {}
   virtual void onTimeout() {}
+  
   virtual void onLinkRateMeasurement( double measured_link_rate __attribute((unused)) ) {}
   //virtual void onPktReceived(const CPacket* pkt) {}
   //virtual void processCustomMsg(const CPacket& pkt) {}

@@ -14,7 +14,7 @@ void RemyCC::init( void ){
 	_intersend_time = 0;
 }
 
-void RemyCC::onACK(int ack, double receiver_timestamp){
+void RemyCC::onACK(int ack, double receiver_timestamp, double sender_timestamp __attribute((unused))){
 	int seq_num = ack - 1;
 	//assert( unacknowledged_packets.count( seq_num ) > 0);
 	if ( unacknowledged_packets.count( seq_num ) > 1 ) { std::cerr<<"Dupack: "<<seq_num<<std::endl; return; }

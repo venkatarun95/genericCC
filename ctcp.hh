@@ -280,7 +280,8 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
             // as far as the congestion control protocol is concerned. This 
             // must be compensated for in the CC, for example in RemyCC
             congctrl.onACK( first_packet_in_group_ack_header.seq_num, 
-              first_packet_in_group_ack_header.receiver_timestamp );
+														first_packet_in_group_ack_header.receiver_timestamp, 
+														first_packet_in_group_ack_header.sender_timestamp );
           }
         }
       }
@@ -297,7 +298,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       #ifdef SCALE_SEND_RECEIVE_EWMA
           assert(false);
       #endif
-      congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
+					congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp, ack_header.sender_timestamp );
     }
     //congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
 

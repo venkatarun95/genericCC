@@ -4,14 +4,15 @@ CXX := g++
 CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -g -O2 
 INCLUDES :=	-I./protobufs-default -I./udt
 
-LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc -ludt $(MEMORY_STYLE)/libremyprotos.a
-OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o pcc-tcp.o nashcc.o markoviancc.o utilities.o
+LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc -ludt 
+#$(MEMORY_STYLE)/libremyprotos.a
+OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o markoviancc.o utilities.o
 
 all: sender receiver prober
 
 .PHONY: all
 
-sender: $(OBJECTS) sender.o
+sender: $(OBJECTS) sender.o $(MEMORY_STYLE)/libremyprotos.a
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
 prober: prober.o udp-socket.o
