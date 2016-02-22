@@ -182,8 +182,13 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
   int transmitted_bytes = 0;
 
   cout << "Assuming training link rate of: " << TRAINING_LINK_RATE << " pkts/sec" << endl;
+	congctrl.set_timestamp(cur_time);
   congctrl.init();
   chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
+
+	// Get min_rtt from outside
+	const char* min_rtt_c = getenv("MIN_RTT");
+	congctrl.set_min_rtt(atof(min_rtt_c));
 
   while ( (byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size ){
     cur_time = current_timestamp( start_time_point );
@@ -201,12 +206,15 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
         memcpy( buf, &header, sizeof(TCPHeader) );
         socket.senddata( buf, packet_size, NULL );
-        if ( i == 0 )
+        if ( i == 0 ) {
+					congctrl.set_timestamp(cur_time);
           congctrl.onPktSent( header.seq_num );
+				}
 
         _packets_sent++;
 
         cur_time = current_timestamp( start_time_point );
+				//cout << "Sending at  " << cur_time << " " << _last_send_time << " " << congctrl.get_intersend_time() << endl;
       }
 
       _last_send_time = cur_time;
@@ -268,6 +276,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
             else
               last_measured_link_rate = last_measured_link_rate*(1 - link_rate_measurement_alpha) + link_rate_measurement_alpha*( 1000 / ( link_rate_measurement_accumulator / (num_packets_per_link_rate_measurement - 1) ) );
             #ifdef SCALE_SEND_RECEIVE_EWMA
+						  congctrl.set_timestamp(cur_time);
               congctrl.onLinkRateMeasurement( last_measured_link_rate );
             #endif
 
@@ -279,6 +288,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
             // NUM_PACKETS_PER_LINK_RATE_MEASUREMENT is treated as one packet 
             // as far as the congestion control protocol is concerned. This 
             // must be compensated for in the CC, for example in RemyCC
+						congctrl.set_timestamp(cur_time);
             congctrl.onACK( first_packet_in_group_ack_header.seq_num, 
 														first_packet_in_group_ack_header.receiver_timestamp, 
 														first_packet_in_group_ack_header.sender_timestamp );
@@ -298,6 +308,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       #ifdef SCALE_SEND_RECEIVE_EWMA
           assert(false);
       #endif
+					congctrl.set_timestamp(cur_time);
 					congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp, ack_header.sender_timestamp );
     }
     //congctrl.onACK( ack_header.seq_num, ack_header.receiver_timestamp );
@@ -308,6 +319,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
   cur_time = current_timestamp( start_time_point );
 
+	congctrl.set_timestamp(cur_time);
   congctrl.close();
 
   this->tot_time_transmitted += cur_time;
