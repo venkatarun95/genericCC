@@ -46,3 +46,7 @@ tmp*
 sender
 receiver
 prober
+test
+
+# Emacs files
+*~
