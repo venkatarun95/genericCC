@@ -2,13 +2,14 @@ MEMORY_STYLE := ./protobufs-default
 
 CXX := g++
 CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -g -O2 
-INCLUDES :=	-I./protobufs-default -I./udt
-
+INCLUDES :=	-I./protobufs-default -I./udt -I./tests -I.
 LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc -ludt 
-#$(MEMORY_STYLE)/libremyprotos.a
-OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o markoviancc.o utilities.o
 
-all: sender receiver prober
+OBJECTS := random.o memory.o memoryrange.o rat.o whisker.o						\
+whiskertree.o udp-socket.o traffic-generator.o remycc.o markoviancc.o	\
+utilities.o
+
+all: sender receiver prober test
 
 .PHONY: all
 
@@ -19,6 +20,9 @@ prober: prober.o udp-socket.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
 receiver: receiver.o udp-socket.o
+	$(CXX) $(inputs) -o $(output) $(LIBS)
+
+test: tests/test.o send-window.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
 %.o: %.cc

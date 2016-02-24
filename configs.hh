@@ -1,3 +1,6 @@
+#ifndef CONFIGS_HH
+#define CONFIGS_HH
+
 #include <string>
 
 // Type of remy (in terms of the congestion signals) to be used
@@ -25,3 +28,16 @@ extern double TRAINING_LINK_RATE; // declared in sender.cc
 // sent along with a timestamp. Declared in sender.cc
 extern bool LINK_LOGGING;
 extern std::string LINK_LOGGING_FILENAME;
+
+
+// Some Types
+// Used for sequence/ack number, data length etc.
+typedef int32_t NumBytes;
+// Magic number used to identify module type to be used, for example
+// to select congestion control protocol, sendw window manager etc.
+typedef const int16_t MagicId;
+
+// Some Constants
+constexpr NumBytes snd_window_size = 0xffff;
+
+#endif
