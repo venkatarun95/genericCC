@@ -28,6 +28,10 @@ class UnitTestWindow : public UnitTest {
 		win.debug_print();
 		win.update_block(8, 3, 2); // Merge last two blocks except 1 byte
 		win.debug_print();
+		win.update_block(0, 20, 3); // Merge everything into 1
+		win.debug_print();
+		win.update_block(5, 5, 2); // Split again
+		win.debug_print();
 		return true;
 	}
 };

@@ -29,9 +29,42 @@ void WindowBlocks<BlockData>::update_block(NumBytes start, NumBytes length, Bloc
 		}
 		else {
 			if (block->data != data) { // truncate block and insert new one
-				block->length = start - block->start;
-				window.insert(block, Block {start, length, data});
-				-- block;
+				if (start > block->start && 
+						start + length >= block->start + block->length) {
+					block->length = start - block->start;
+					window.insert(block, Block {start, length, data});
+					-- block;
+				}
+				else if (start > block->start) {
+					window.insert(block, Block {start + length, 
+								block->start + block->length - start - length, block->data});
+					window.insert(block, Block {start, length, data});
+					block->length = start - block->start;
+					-- block;
+				}
+				else if (start == block->start) {
+					if (start + length >= block->start + block->length) {
+						block->start = start;
+						block->length = length;
+						block->data = data;
+					}
+					else {
+						// The new block is in the middle of an older block. So
+						// 3-way split.
+						window.insert(++ block, Block {start, length, data});
+						-- block; -- block;
+						block->length = block->start + block->length - start - length;
+						block->start = start + length;
+						++ block;
+					}
+					// Merge with previous block if possible
+					if (data == (++ block)->data) {
+						block->length += length;
+						auto temp_block = -- block;
+						++ block;
+						window.erase(temp_block);
+					}
+				}
 			}
 			else
 				block->length = start + length - block->start;
@@ -44,7 +77,7 @@ void WindowBlocks<BlockData>::update_block(NumBytes start, NumBytes length, Bloc
 	// ahead of it. That is `block->start + block->length <
 	// (--block)->start`. We will try to merge with the next block if
 	// possible.
-	if (block != window.begin()) {
+	while (block != window.begin()) {
 		auto block_ahead = -- block;
 		++ block;
 		if (block->start + block->length >= block_ahead->start) { // There is a collision
@@ -52,14 +85,21 @@ void WindowBlocks<BlockData>::update_block(NumBytes start, NumBytes length, Bloc
 				block_ahead->length = block_ahead->length + block_ahead->start - block->start;
 				block_ahead->start = block->start;
 				window.erase(block);
+				-- block;
 			}
 			else if (block->start + block->length > block_ahead->start) { // Separate 'em
 				block_ahead->length -= block->start + block->length - block_ahead->start;
 				block_ahead->start = block->start + block->length;
 			}
-			if (block_ahead->length <= 0)
+			if (block_ahead->length <= 0) {
 				window.erase(block_ahead);
+				++ block;
+			}
 		}
+		else
+			break;
+		//block = block_ahead;
+		-- block;
 	}
 
 	// Delete any information older than max_len to save memory.
