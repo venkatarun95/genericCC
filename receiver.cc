@@ -98,7 +98,7 @@ int main(int argc __attribute((unused)), char* argv[] __attribute((unused))) {
 	// 	cout << "Please specify the IP address of the NAT server" << endl;
 	// 	return 0;
 	// }
-	string nat_ip_addr = argv[1];
+	//string nat_ip_addr = argv[1];
 
 	UDPSocket sender_socket;
 	sender_socket.bindsocket(8888);
