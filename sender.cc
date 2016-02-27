@@ -5,7 +5,7 @@
 #include "remycc.hh"
 #include "ctcp.hh"
 #include "kernelTCP.hh"
-#include "pcc-tcp.hh"
+// #include "pcc-tcp.hh"
 #include "nashcc.hh"
 #include "markoviancc.hh"
 #include "traffic-generator.hh"
@@ -111,7 +111,7 @@ int main( int argc, char *argv[] ) {
 	}
 
 	if ( serverip == "" || sourceip == "") {
-		fprintf( stderr, "Usage: sender serverip=(ipaddr) sourceip=(ipaddr) [if=(ratname)] [delta=(for NashCC)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|kernel|tcp|pcc|nash] [traffic_type=[deterministic|exponential][byte_switched]] [linkrate=(packets/sec)] [linklog=filename][serverport=(port)] [sourceport=(port)]\n");
+		fprintf( stderr, "Usage: sender serverip=(ipaddr) sourceip=(ipaddr) [if=(ratname)] [delta=(for NashCC)] [offduration=(time in ms)] [onduration=(time in ms)] [cctype=remy|markovian|kernel|tcp] [traffic_params=[deterministic|exponential][byte_switched]] [serverport=(port)] [sourceport=(port)]\n");
 		exit(1);
 	}
 
@@ -141,10 +141,10 @@ int main( int argc, char *argv[] ) {
 		traffic_generator.spawn_senders( 1 );
 	}
 	else if ( cctype == CCType::PCC ) {
-		fprintf( stdout, "Using PCC.\n");
-		PCC_TCP connection( serverip, serverport );
+		fprintf( stdout, "Using PCC. ERROR: Not yet implemented\n");
+		/*PCC_TCP connection( serverip, serverport );
 		TrafficGenerator< PCC_TCP > traffic_generator( connection, onduration, offduration, traffic_params );
-		traffic_generator.spawn_senders( 1 );
+		traffic_generator.spawn_senders( 1 );*/
 	}
 	else if ( cctype == CCType::NASHCC ) {
 		double param = delta;
