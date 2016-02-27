@@ -130,7 +130,7 @@ over UDP.
 
 ### Example
 
-Running on Mahimahi (see [the mahimahi web-page](mahimahi.mit.edu))
+Running on Mahimahi (see [mahimahi.mit.edu](http://mahimahi.mit.edu))
 
 `sudo sysctl -w net.ipv4.ip_forward=1`
 
