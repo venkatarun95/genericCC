@@ -93,11 +93,11 @@ void echo_packets(UDPSocket &sender_socket) {
 	}
 }
 
-int main(int argc, char* argv[]) {
-	if (argc != 2) {
-		cout << "Please specify the IP address of the NAT server" << endl;
-		return 0;
-	}
+int main(int argc __attribute((unused)), char* argv[] __attribute((unused))) {
+	// if (argc != 2) {
+	// 	cout << "Please specify the IP address of the NAT server" << endl;
+	// 	return 0;
+	// }
 	string nat_ip_addr = argv[1];
 
 	UDPSocket sender_socket;

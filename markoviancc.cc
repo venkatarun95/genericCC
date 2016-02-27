@@ -148,10 +148,10 @@ void MarkovianCC::onACK(int ack,
 	prev_ack_time = cur_time;
 	if (cur_time - monitor_interval_start > max(rtt_acked, rtt_unacked)) {
 		monitor_interval_start = cur_time;
-		if (num_losses >= 3)
-			cout << "High loss RTT" << endl;
-		else
-			cout << "Low loss RTT" << endl;
+		// if (num_losses >= 3)
+		// 	cout << "High loss RTT" << endl;
+		// else
+		//	cout << "Low loss RTT" << endl;
 		if (prev_pseudo_delay != 0)
 			prev_pseudo_delay = pseudo_delay;
 		else
