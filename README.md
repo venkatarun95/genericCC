@@ -126,6 +126,6 @@ delay as follows:
 
 `mm-delay 50 mm-link ~/traces/trace-12Mbps ~/traces/trace-12Mbps`
 
-Find the ip addresses inside and outside the mahimahi shell by running `ifconfig` inside and outside the shell resp. Inside the shell look for an 'ingress' interface and outside the shell, look for a 'delay-*' interface. For instance they could be '100.64.0.1' and '100.64.0.4' resp. Run `./receiver` outside the mahimahi shells. Run the following command inside the shells to start a sender that repeatedly switches on and off with on/off times exponentially distributed with a mean of 5s. You can run several such sender processes in parallel, but running more than n-1 senders (where n is the number of available cores) is not recommended, especially for protocols that could be potentially pacing sensitive such as Remy. 
+Find the ip addresses inside and outside the mahimahi shell by running `ifconfig` inside and outside the shell resp. Inside the shell look for an 'ingress' interface and outside the shell, look for a 'delay-*' interface. For instance they could be '100.64.0.1' and '100.64.0.4' resp. Run `./receiver` outside the mahimahi shells. Run the following command inside the shells to start a sender that uses Copa and repeatedly switches on and off with on/off times exponentially distributed with a mean of 5s. You can run several such sender processes in parallel, but running more than n-1 senders (where n is the number of available cores) is not recommended, especially for protocols that could be potentially pacing sensitive such as Remy. 
 
-`./sender serverip=100.64.0.1 sourceip=100.64.0.4`
+`./sender serverip=100.64.0.1 sourceip=100.64.0.4 cctype=markovian`
