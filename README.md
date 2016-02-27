@@ -135,12 +135,23 @@ Running on Mahimahi (see [mahimahi.mit.edu](http://mahimahi.mit.edu))
 `sudo sysctl -w net.ipv4.ip_forward=1`
 
 Start two nested mahimahi shells emulating a 12Mbps link with a 100ms
-delay as follows:
+delay as follows (assuming you have the relevant trace file, for
+12Mbps, it is just a text file containing the single ascii character
+'1'):
 
-`mm-delay 50 mm-link ~/traces/trace-12Mbps ~/traces/trace-12Mbps`
+`mm-delay 50 mm-link trace-12Mbps trace-12Mbps`
 
-Find the ip addresses inside and outside the mahimahi shell by running `ifconfig` inside and outside the shell resp. Inside the shell look for an 'ingress' interface and outside the shell, look for a 'delay-*' interface. For instance they could be '100.64.0.1' and '100.64.0.4' resp. Run `./receiver` outside the mahimahi shells. Run the following command inside the shells to start a sender that uses Copa and repeatedly switches on and off with on/off times exponentially distributed with a mean of 5s. You can run several such sender processes in parallel, but running more than n-1 senders (where n is the number of available cores) is not recommended, especially for protocols that could be potentially pacing sensitive such as Remy. 
+Find the ip addresses inside and outside the mahimahi shell by running
+`ifconfig` inside and outside the shell resp. Inside the shell look
+for an 'ingress' interface and outside the shell, look for a 'delay-*'
+interface. For instance they could be '100.64.0.1' and '100.64.0.4'
+resp. Run `./receiver` outside the mahimahi shells. Run the following
+command inside the shells to start a sender that uses Adaptive Copa
+that bounds end-to-end delay to 110ms. It will transmit in 10s bunches. You can run several such sender processes in parallel, but
+running more than n-1 senders (where n is the number of available
+cores) is not recommended, especially for protocols that could be
+potentially pacing sensitive such as Remy.
 
 `export MIN_RTT=10000`
 
-`./sender serverip=100.64.0.1 sourceip=100.64.0.4 cctype=markovian`
+`./sender serverip=100.64.0.1 sourceip=100.64.0.4 cctype=markovian delta_conf=bounded_delay_end:110 onduration=10000 offduration=100 traffic_params=deterministic`

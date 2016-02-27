@@ -75,7 +75,7 @@ void MarkovianCC::update_delta(bool pkt_lost) {
 		if (prev_delta_update_time_loss < cur_time - rtt_ewma && pkt_lost) {
 			delta += 0.01;
 			//delta *= 1.1;
-			cout << "@ " << cur_time << " " << delta << " Loss" << endl;
+			//cout << "@ " << cur_time << " " << delta << " Loss" << endl;
 			prev_delta_update_time_loss = cur_time;
 			return;
 		}
@@ -89,7 +89,7 @@ void MarkovianCC::update_delta(bool pkt_lost) {
 		else if (rtt_ewma < delay_bound)
 			delta /= 1.1; //1.0 / (1.0 / delta + 0.01);
 		delta = max(0.01, delta);
-		cout << "@ " << cur_time << " " << delta << " " << rtt_ewma << " " << delay_bound << " " << pkt_lost << endl;
+		//cout << "@ " << cur_time << " " << delta << " " << rtt_ewma << " " << delay_bound << " " << pkt_lost << endl;
 	}
 	assert(utility_mode == PFABRIC_FCT || utility_mode == CONSTANT_DELTA  ||
 				 utility_mode == BOUNDED_DELAY_END || 
