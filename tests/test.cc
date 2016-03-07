@@ -36,8 +36,8 @@ int main() {
 			res = false;
 
 		if (res)
-			cout << "Unit Test Passed: '" << test.second << "'." << endl;
+			cout << "Unit Tests Passed: '" << test.second << "'." << endl;
 		else
-			cout << "Unit Test Failed: '" << test.second << "'." << endl;
+			cout << "Unit Tests Failed: '" << test.second << "'." << endl;
 	}
 }
