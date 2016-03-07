@@ -36,8 +36,18 @@ typedef int32_t NumBytes;
 // Magic number used to identify module type to be used, for example
 // to select congestion control protocol, sendw window manager etc.
 typedef const int16_t MagicId;
+// Used for access control bit for fields in a TCP header (optional or
+// otherwise).
+typedef int64_t AccessControlBits;
+// Magic number for identifying optional headers.
+typedef int16_t HeaderMagicNum;
+// To represent time and delta time. Supports 0, +, * (with int), -
+// and / (with int)
+typedef double Time;
+typedef double TimeDelta;
 
 // Some Constants
 constexpr NumBytes snd_window_size = 0xffff;
-
+constexpr HeaderMagicNum endpoint_header_magic_num = 0x0;
+constexpr HeaderMagicNum common_header_magic_num = 0x1;
 #endif
