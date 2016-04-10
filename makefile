@@ -1,7 +1,7 @@
 MEMORY_STYLE := ./protobufs-default
 
 CXX := g++
-CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -g -O2 
+CXXFLAGS := -DHAVE_CONFIG_H -std=c++11 -pthread -pedantic -Wall -Wextra -Weffc++ -Werror -fno-default-inline -g
 INCLUDES :=	-I./protobufs-default -I./udt -I./tests -I.
 LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc -ludt 
 
@@ -22,7 +22,7 @@ prober: prober.o udp-socket.o
 receiver: receiver.o udp-socket.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
-test: tests/test.o send-window.o
+test: tests/test.o window-blocks.o send-window.o process-header.o events.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
 %.o: %.cc
