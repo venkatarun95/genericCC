@@ -2,6 +2,7 @@
 #define CONFIGS_HH
 
 #include <string>
+#include "time.hh"
 
 // Type of remy (in terms of the congestion signals) to be used
 //
@@ -43,7 +44,7 @@ typedef int64_t AccessControlBits;
 typedef int16_t HeaderMagicNum;
 // To represent time and delta time. Supports 0, +, * (with int), -
 // and / (with int)
-typedef double Time;
+//typedef double Time;
 typedef double TimeDelta;
 
 // Some Constants

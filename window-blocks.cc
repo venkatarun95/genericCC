@@ -145,5 +145,6 @@ void WindowBlocks<BlockData>::debug_print() {
 
 #include "send-window.hh"
 
+template class WindowBlocks<bool>;
 template class WindowBlocks<int>;
 template class WindowBlocks<SendWindowSack::BlockData>;

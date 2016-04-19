@@ -34,10 +34,6 @@ class Event {
  private:
 	// List of callback functions.
 	std::vector<void (*)()> listeners;
-	// Current time in ms.
-	static double current_timestamp();
-	// When the event loop was started.
-	static std::chrono::high_resolution_clock::time_point start_time_point;
 };
 
 // Fires callbacks at a set time. Handles atmost one alarm at a time,
