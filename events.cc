@@ -53,14 +53,20 @@ void Event::EventLoop() {
 	sockaddr_in other_addr;
 	while (true) {
 		int timeout = int(alarms.begin()->first * 1000 - Event::current_timestamp());
-		Event* alarm = alarms.begin()->second;
 		if (socket->receivedata(buffer, 
 													 max_pkt_size,
 													 timeout,
 													 other_addr)) {
-			alarm->DoCallback();
+			// Timer expired
+			Time now = current_timestamp();
+			for (auto& x : alarms) {
+				if (x.first > now)
+					break;
+				x.second->DoCallback();
+			}
 		}
 		else {
+			// Packet received
 			recv_event->DoCallback();
 		}
 	}
