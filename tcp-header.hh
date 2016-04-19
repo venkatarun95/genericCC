@@ -9,7 +9,7 @@
 
 // Base class for all headers
 struct HeaderBase {
-  virtual ~HeaderBase();
+	virtual ~HeaderBase() {}
 };
 
 // Header which is assumed to be present in all TCP packets. Some
@@ -101,28 +101,36 @@ struct CommonTcpHeader : public HeaderBase{
 // directly sent 'on the wire' and always stays within a single
 // endpoint.
 struct EndpointHeader : public HeaderBase {
-	EndpointHeader()
-		: recv_time(),
+	enum HdrType {INCOMING_PACKET, OUTGOING_PACKET, INTERNAL_MESSAGE};
+	EndpointHeader(HdrType type, Time now)
+		: type(type),
+			time_now(now),
 			next_send_seq_num(),
 			next_send_length()
 	{}
 
+	HdrType type;
   // The time at which the packet was received.
-  Time recv_time;
+  Time time_now;
   // The length and starting sequence number of the next packet to be
   // sent.
   NumBytes next_send_seq_num;
   NumBytes next_send_length;
   
-  static constexpr AccessControlBits A_RecvTime = 0x01;
-  static constexpr AccessControlBits A_NextSendSeqNum = 0x02;
-  static constexpr AccessControlBits A_NextSendLength = 0x04;
+	static constexpr AccessControlBits A_Type = 0x01;
+  static constexpr AccessControlBits A_TimeNow = 0x02;
+  static constexpr AccessControlBits A_NextSendSeqNum = 0x04;
+  static constexpr AccessControlBits A_NextSendLength = 0x08;
 
   // These access functions should be optimized out as the values in
 	// the assert calls will be known at compile time.
-  Time get_recv_time(AccessControlBits read_permissions) const {
-    assert(A_RecvTime & read_permissions);
-    return recv_time;
+	HdrType get_type(AccessControlBits read_permissions) const {
+    assert(A_Type & read_permissions);
+    return type;
+  }
+  Time get_time_now(AccessControlBits read_permissions) const {
+    assert(A_TimeNow & read_permissions);
+    return time_now;
   }
   NumBytes get_next_send_seq_num(AccessControlBits read_permissions) const {
     assert(A_NextSendSeqNum & read_permissions);
@@ -133,9 +141,10 @@ struct EndpointHeader : public HeaderBase {
     return next_send_length;
   }
 
-  void set_recv_time(AccessControlBits write_permissions, Time s_recv_time) {
-    assert(A_RecvTime & write_permissions);
-    recv_time = s_recv_time;
+  void set_time_now(AccessControlBits write_permissions, Time s_time_now) {
+		assert(false);
+    assert(A_TimeNow & write_permissions);
+    time_now = s_time_now;
   }
   void set_next_send_seq_num(AccessControlBits write_permissions, NumBytes s_next_send_seq_num) {
     assert(A_NextSendSeqNum & write_permissions);
@@ -156,9 +165,9 @@ struct OptionalHeaderBase : public HeaderBase {
 
 // Structure containing all headers representing a packet.
 struct TcpPacket {
-	TcpPacket()
+	TcpPacket(EndpointHeader::HdrType type, Time now)
 		: common_header(),
-			endpoint_header(),
+			endpoint_header(type, now),
 			optional_headers()
 	{}
   CommonTcpHeader common_header;

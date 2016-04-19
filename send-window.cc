@@ -5,53 +5,59 @@
 
 using namespace std;
 
-SendWindowSack::SendWindowSack(PktRecvEvent& pkt_recv_event,
-															 ProcessHeader common_pipeline)
-	: pkt_recv_event(pkt_recv_event),
+SendWindowSack::SendWindowSack(ProcessHeader rtx_pipeline)
+	: rtx_pipeline(rtx_pipeline),
 		rtx_alarm(),
-		common_pipeline(common_pipeline),
 		window(0),
-		rtx_timeout(1),
+		rtx_timeout(1), // TODO(venkat): Make this RTT dependent.
 		rtx_time(numeric_limits<Time>::max()),
 		next_segment_start(0),
 		next_segment_length(max_segment_length)
 {}
 
-void SendWindowSack::on_pkt_recv(TcpPacket pkt) {
-	Time now = pkt.endpoint_header.get_recv_time(endpoint_read);
+void SendWindowSack::AccessHeader(TcpPacket& pkt) {
+	if (pkt.endpoint_header.get_type(endpoint_read) ==
+			EndpointHeader::HdrType::INCOMING_PACKET)
+		OnPktRecv(pkt);
+	else if (pkt.endpoint_header.get_type(endpoint_read) ==
+			EndpointHeader::HdrType::OUTGOING_PACKET)
+		OnPktSend(pkt);
+}
+
+void SendWindowSack::OnPktRecv(TcpPacket& pkt) {
+	Time now = pkt.endpoint_header.get_time_now(endpoint_read);
   for (int i = 0; i < CommonTcpHeader::num_sack_blocks; ++ i) {
 		NumBytes start = pkt.common_header.get_sack_block(common_read, i, 0);
 		NumBytes length = pkt.common_header.get_sack_block(common_read, i, 1);
     window.update_block(start,
                         length,
-                        {0, true, 0});
+                        BlockData {0, true, 0});
   }
   
   SetNextSegmentToTransmit(now);
-	SetRtxTime(now);
-
-  pkt.endpoint_header.set_next_send_seq_num(endpoint_write, next_segment_start);
-  pkt.endpoint_header.set_next_send_length(endpoint_write, next_segment_length);
+	SetRtxTimer(now);
 }
 
-void SendWindowSack::on_pkt_sent(TcpPacket pkt, Time now) {
-  NumBytes start = pkt.common_header.get_seq_number(common_read);
-	NumBytes length = pkt.common_header.get_data_len(common_read);
+void SendWindowSack::OnPktSend(TcpPacket& pkt) {
+	Time now = pkt.endpoint_header.get_time_now(endpoint_read);
+	pkt.common_header.set_seq_number(common_write, next_segment_start);
+  pkt.common_header.set_data_len(common_write, next_segment_length);
 
-	auto prev_data = window.get_block(start);
+	const auto prev_data = window.get_block(next_segment_start);
 	int num_times_transmitted = 1;
 	if (prev_data.length > 0)
 		num_times_transmitted = prev_data.data.num_times_transmitted + 1;
 
-	window.update_block(start,
-											length,
+	window.update_block(next_segment_start,
+											next_segment_length,
 											BlockData {now, false, num_times_transmitted});
+
 	SetNextSegmentToTransmit(now);
-	SetRtxTime(now);
+	SetRtxTimer(now);
 }
 
 void SendWindowSack::RetransmitAlarmHandler() {
-	TcpPacket pkt;
+	TcpPacket pkt(EndpointHeader::HdrType::OUTGOING_PACKET, Time::Now());
 	rtx_pipeline.Process(pkt);
 }
 
@@ -81,11 +87,11 @@ void SendWindowSack::SetNextSegmentToTransmit(Time now) {
   next_segment_length = max_segment_length;
 }
 
-void SendWindowSack::SetRtxTime(Time now __attribute((unused))) {
+void SendWindowSack::SetRtxTimer(Time now __attribute((unused))) {
 	auto blocks = window.get_block_list();
 	Time new_rtx_time = numeric_limits<Time>::max();
 	for (auto x = blocks.end(); x != blocks.begin(); -- x) 
-		new_rtx_time = min(new_rtx_time, x->data.last_sent_time + rtx_timeout);
+		new_rtx_time = min((double)new_rtx_time, x->data.last_sent_time + rtx_timeout);
 	assert(new_rtx_time >= rtx_time);
 	if (new_rtx_time != rtx_time) {
 		rtx_alarm.SetAlarm(new_rtx_time);

@@ -9,17 +9,24 @@
 #include "window-blocks.hh"
 
 // Decides which segment to transmit next given information about
-// which bytes have been sent and acked. Uses Sack.
+// which bytes have been sent and acked. Uses Selective
+// Acknowledgements (Sack). Should be part of pipelines such that
+// every packet that is sent (so that it can fill in which bytes are
+// to be sent), received (so that it can note which bytes have been
+// acked) is processed. Also should be part of message pipelines that
+// tell it how much data the application wants to transmit.
 class SendWindowSack : public HeaderAccessor {
- public:
-	// Takes event handler, 'pkt_recv', for when packet is
-	// received. common_pipeline should pass through a congestion
-	// controller which periodically fires packet pipes. This will fire
-	// packet pipes on rtx timeout.
-	SendWindowSack(PktRecvEvent& pkt_recv_event,
-								 ProcessHeader rtx_pipeline);
+public:
+	// This will fire outgoing packets on rtx timeout in the given pipe.
+	SendWindowSack(ProcessHeader rtx_pipeline);
 
   struct BlockData {
+		BlockData() : last_sent_time(), acked(), num_times_transmitted() {}
+		BlockData(Time last_sent_time, bool acked, int num_times_transmitted)
+			: last_sent_time(last_sent_time),
+				acked(acked),
+				num_times_transmitted(num_times_transmitted) 
+		{}
     // Last time this was sent
     Time last_sent_time;
     // Has this been acked yet?
@@ -55,29 +62,29 @@ class SendWindowSack : public HeaderAccessor {
 
 
  private:
-	virtual void on_pkt_recv(TcpPacket headers);
-  virtual void on_pkt_sent(TcpPacket headers, Time now);
+	virtual void OnPktRecv(TcpPacket& headers);
+  virtual void OnPktSend(TcpPacket& headers);
   // Sets the variables `next_segment_start` and `next_segment_length`
   // with values for the next segment to transmit.
   void SetNextSegmentToTransmit(Time now);
-	void SetRtxTime(Time now);
+	void SetRtxTimer(Time now);
 
   // Read/write permissions for header fields
   AccessControlBits common_read = 
     CommonTcpHeader::A_SackBlocks 
     | CommonTcpHeader::A_WindowSize;
-  AccessControlBits common_write = 0x0;
+  AccessControlBits common_write =
+		CommonTcpHeader::A_SeqNumber
+		| CommonTcpHeader::A_DataLen;
   AccessControlBits endpoint_read =
-    EndpointHeader::A_RecvTime;
-  AccessControlBits endpoint_write = 
-    EndpointHeader::A_NextSendSeqNum
-    | EndpointHeader::A_NextSendLength;
+		EndpointHeader::A_Type
+    | EndpointHeader::A_TimeNow;
+  AccessControlBits endpoint_write = 0x0;
 
-  static constexpr NumBytes max_segment_length = 1400;
+  const NumBytes max_segment_length = 1400;
 
-	PktRecvEvent& pkt_recv_event;
+	ProcessHeader rtx_pipeline;
 	AlarmEvent rtx_alarm;
-	ProcessHeader& rtx_pipeline;
 
   WindowBlocks<BlockData> window;
 	// Time elapsed between last packet send time and its retransmission
