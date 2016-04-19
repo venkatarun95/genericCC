@@ -16,6 +16,9 @@ struct HeaderBase {
 // versions of TCP or some special packets (such as SYN) may choose to
 // append this with more header information.
 struct CommonTcpHeader : public HeaderBase{
+	CommonTcpHeader()
+		: seq_number(), window_size(), data_len(), flags(), num_optional_headers()
+	{}
 	// Sequence number of first byte in packet
 	NumBytes seq_number;
 	// Acknowledgement number
@@ -98,6 +101,12 @@ struct CommonTcpHeader : public HeaderBase{
 // directly sent 'on the wire' and always stays within a single
 // endpoint.
 struct EndpointHeader : public HeaderBase {
+	EndpointHeader()
+		: recv_time(),
+			next_send_seq_num(),
+			next_send_length()
+	{}
+
   // The time at which the packet was received.
   Time recv_time;
   // The length and starting sequence number of the next packet to be
@@ -147,6 +156,11 @@ struct OptionalHeaderBase : public HeaderBase {
 
 // Structure containing all headers representing a packet.
 struct TcpPacket {
+	TcpPacket()
+		: common_header(),
+			endpoint_header(),
+			optional_headers()
+	{}
   CommonTcpHeader common_header;
   EndpointHeader endpoint_header;
   std::unordered_map<HeaderMagicNum, HeaderBase> optional_headers;
