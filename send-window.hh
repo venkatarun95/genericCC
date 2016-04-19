@@ -2,99 +2,91 @@
 #define SEND_WINDOW_HH
 
 #include "configs.hh"
+#include "events.hh"
+#include "header-accessor.hh"
+#include "process-header.hh"
 #include "tcp-header.hh"
+#include "window-blocks.hh"
 
-#include <iostream>
-#include <limits>
-#include <list>
-#include <queue>
-
-// Support class to maintain state about bytes in a window.
-//
-// Note that wrapping around of sequence numbers is not yet
-// supported. It is assumed that newer bytes have higher sequence
-// numbers. If max_len is 0, window grows indefinitely. A finite value
-// saves memory by deleting old information. Old information is only
-// deleted if it helps save memory.
-template <class BlockData>
-class WindowBlocks {
+// Decides which segment to transmit next given information about
+// which bytes have been sent and acked. Uses Sack.
+class SendWindowSack : public HeaderAccessor {
  public:
-	WindowBlocks(NumBytes max_len)
-	: window(),
-		max_len(max_len)
-	{}
+	// Takes event handler, 'pkt_recv', for when packet is
+	// received. common_pipeline should pass through a congestion
+	// controller which periodically fires packet pipes. This will fire
+	// packet pipes on rtx timeout.
+	SendWindowSack(PktRecvEvent& pkt_recv_event,
+								 ProcessHeader rtx_pipeline);
 
-	void update_block(NumBytes start, NumBytes len, BlockData data);
-	void debug_print();
+  struct BlockData {
+    // Last time this was sent
+    Time last_sent_time;
+    // Has this been acked yet?
+    bool acked;
+    // Number of times this segment has been sent
+    int num_times_transmitted;
 
- private:
-	struct Block {
-		NumBytes start;
-		NumBytes length;
-		BlockData data;
-	};
+    bool operator==(const BlockData& other) const {
+      return last_sent_time == other.last_sent_time 
+        && acked == other.acked 
+        && num_times_transmitted == other.num_times_transmitted;
+    }
+    bool operator!=(const BlockData& other) const {
+      return !(*this == other);
+    }
+    // To enable debug printing in window-blocks for unit tests.
+    operator int() const { return ((acked)?1:-1) * last_sent_time * 1e3; }
+  };
 
-	std::list<Block> window;
-	NumBytes max_len;
-};
+  virtual std::vector< std::pair<HeaderMagicNum, AccessControlBits> >
+  get_read_permissions() const {
+    return {std::make_pair(endpoint_header_magic_num, endpoint_read),
+        std::make_pair(common_header_magic_num, common_read)};
+  }
+  virtual std::vector< std::pair<HeaderMagicNum, AccessControlBits> >
+  get_write_permissions() const {
+    return {std::make_pair(endpoint_header_magic_num, endpoint_write),
+        std::make_pair(common_header_magic_num, common_write)};
+  }
 
-/*
-// Abstract base class
-class SendWindow {
-	// Fills 'seq_num' with sequence number of first byte to be send and
-	// 'block_length' with length of data block to be sent.
-	virtual void get_next_block_to_send(NumBytes& seq_num, NumBytes& block_length) const;
-	// Fills char buffer pointed to by 'base' with data to be sent
-	// next. Assumes sufficient space is available.
-	virtual void fill_data(const char* base) const;
-	// Tell window manager that data has been sent.
-	virtual void mark_data_as_sent(NumBytes seq_num, NumBytes block_length);
-	// Tell window manager that data has been acked.
-	virtual void mark_data_as_acked(NumBytes seq_num, NumBytes block_length) override;
-	
-	virtual MagicId get_magic_id() const;
-};
-
-class DefaultSendWindow : public SendWindow {
-	DefaultSendWindow()
-		: buffer(),
-			buffer_length(0),
-			buffer_start_seq_num(0)
-	{}
-
-	// Fills 'seq_num' with sequence number of first byte to be send and
-	// 'block_length' with length of data block to be sent.
-	virtual void get_next_block_to_send(NumBytes& seq_num, NumBytes& block_length) const override;
-	// Fills char buffer pointed to by 'base' with data to be sent
-	// next. Assumes sufficient space is available.
-	virtual void fill_data(const char* base) const override;
-	// Tell window manager that data has been sent.
-	virtual void mark_data_as_sent(NumBytes seq_num, NumBytes block_length) override;
-	// Tell window manager that data has been acked.
-	virtual void mark_data_as_acked(NumBytes seq_num, NumBytes block_length) override;
-	
-	virtual MagicId get_magic_id() const { return 0x1};
+	virtual void AccessHeader(TcpPacket&) override;
+	void RetransmitAlarmHandler();
 
 
  private:
-	// Maximum size of send window (and hence of buffer).
-	constexpr max_window_size = snd_window_size;
+	virtual void on_pkt_recv(TcpPacket headers);
+  virtual void on_pkt_sent(TcpPacket headers, Time now);
+  // Sets the variables `next_segment_start` and `next_segment_length`
+  // with values for the next segment to transmit.
+  void SetNextSegmentToTransmit(Time now);
+	void SetRtxTime(Time now);
 
-	// Buffer for data bytes.
-	std::queue<char> buffer;
-	// Length of buffer in bytes.
-  NumBytes buffer_length;
-	// Sequence number of first byte in buffer.
-	NumBytes buffer_start_seq_num;
+  // Read/write permissions for header fields
+  AccessControlBits common_read = 
+    CommonTcpHeader::A_SackBlocks 
+    | CommonTcpHeader::A_WindowSize;
+  AccessControlBits common_write = 0x0;
+  AccessControlBits endpoint_read =
+    EndpointHeader::A_RecvTime;
+  AccessControlBits endpoint_write = 
+    EndpointHeader::A_NextSendSeqNum
+    | EndpointHeader::A_NextSendLength;
 
-	struct DataBlock {
-		NumBytes seq_num;
-		NumBytes length;
-		// Number of times this block has been transmitted
-		int num_transmissions;
-	};
-	// List of starting and ending addresses of blocks of acked bytes
-	std::list<DataBlock> acked_blocks;
+  static constexpr NumBytes max_segment_length = 1400;
+
+	PktRecvEvent& pkt_recv_event;
+	AlarmEvent rtx_alarm;
+	ProcessHeader& rtx_pipeline;
+
+  WindowBlocks<BlockData> window;
+	// Time elapsed between last packet send time and its retransmission
+  TimeDelta rtx_timeout;
+	// Time at which to retransmit the oldest unacked packet.
+	Time rtx_time;
+
+  NumBytes next_segment_start;
+  NumBytes next_segment_length;
 };
-*/
-#endif
+
+#endif // SEND_WINDOW_HH
