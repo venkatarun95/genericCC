@@ -128,11 +128,12 @@ void WindowBlocks<BlockData>::update_block(NumBytes start, NumBytes length, Bloc
 }
 
 template <class BlockData>
-const Block& WindowBlocks<BlockData>::get_block(NumBytes byte) {
+typename WindowBlocks<BlockData>::Block 
+WindowBlocks<BlockData>::get_block(NumBytes byte) const {
   for(const auto& x : window)
     if (x.start <= byte && x.start + x.length > byte)
       return x;
-  return BlockData {0, 0, Block()}
+  return Block {0, 0, BlockData()};
 }
 
 template <class BlockData>
@@ -145,4 +146,4 @@ void WindowBlocks<BlockData>::debug_print() {
 #include "send-window.hh"
 
 template class WindowBlocks<int>;
-template class WindowBlocks<SendWindow::BlockData>;
+template class WindowBlocks<SendWindowSack::BlockData>;

@@ -1,5 +1,5 @@
-#ifndef SEND_WINDOW_HH
-#define SEND_WINDOW_HH
+#ifndef WINDOW_BLOCKS_HH
+#define WINDOW_BLOCKS_HH
 
 #include "configs.hh"
 #include "tcp-header.hh"
@@ -38,7 +38,7 @@ class WindowBlocks {
   // Get data stored for a particulat byte. If no data is stored,
   // length is 0 in the returned block. This scans linearly from the
   // highest byte index.
-  const Block& get_block(NumBytes byte) const;
+  Block get_block(NumBytes byte) const;
 
 	void debug_print();
 
@@ -47,4 +47,4 @@ class WindowBlocks {
 	NumBytes max_len;
 };
 
-#endif
+#endif // WINDOW_BLOCKS_HH
