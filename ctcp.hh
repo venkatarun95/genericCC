@@ -182,9 +182,12 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
   int transmitted_bytes = 0;
 
   cout << "Assuming training link rate of: " << TRAINING_LINK_RATE << " pkts/sec" << endl;
+
+  chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
+	cur_time = current_timestamp( start_time_point );
+	_last_send_time = cur_time;
 	congctrl.set_timestamp(cur_time);
   congctrl.init();
-  chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
 
 	// Get min_rtt from outside
 	const char* min_rtt_c = getenv("MIN_RTT");
@@ -206,6 +209,11 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
         memcpy( buf, &header, sizeof(TCPHeader) );
         socket.senddata( buf, packet_size, NULL );
+				if ((_last_send_time - cur_time) / congctrl.get_intersend_time() > 10)
+					// Hopeless. Stop trying to compensate.
+					_last_send_time = cur_time;
+				else
+					_last_send_time += congctrl.get_intersend_time();
         if ( i == 0 ) {
 					congctrl.set_timestamp(cur_time);
           congctrl.onPktSent( header.seq_num );
@@ -217,7 +225,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 				//cout << "Sending at  " << cur_time << " " << _last_send_time << " " << congctrl.get_intersend_time() << endl;
       }
 
-      _last_send_time = cur_time;
+			//_last_send_time = cur_time;
       seq_num++; // a set of num_packets_per_link_rate_measurement (say 3) are sequence numbered as 3n, 3n+1, 3n+2. This is later used for link rate measurement while receiving packets.
 
       // Uncomment for logging
