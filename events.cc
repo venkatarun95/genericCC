@@ -1,22 +1,30 @@
 #include "events.hh"
 
-#include <cassert>
+#include "pickle-packet.hh"
 
-std::map<Time, Event*> Event::alarms;
-Event* Event::recv_event = nullptr;
+#include <cassert>
+#include <cstring>
+
+std::map<Time, AlarmEvent*> Event::alarms;
+// Will be set in PktRecvEvent's constructor.
+PktRecvEvent* Event::recv_event = nullptr;
 UDPSocket* Event::socket = nullptr;
 
-Event::Event()
-	: listeners()
-{}
+Event::Event() {}
 
-void Event::DoCallback() {
+void AlarmEvent::DoCallback(const Time& now) {
 	for (const auto& x : listeners)
-		x();
+		x(now);
+}
+
+void PktRecvEvent::DoCallback(const TcpPacket& pkt) {
+	for (const auto& x : listeners)
+		x(pkt);
 }
 
 AlarmEvent::AlarmEvent()
-	: when(),
+	: listeners(),
+	  when(),
 		set(false)
 {}
 
@@ -33,16 +41,27 @@ void AlarmEvent::UnsetAlarm() {
 	set = false;
 }
 
-PktRecvEvent::PktRecvEvent(UDPSocket* socket) {
+void AlarmEvent::AddListener(void (*x)(Time now)) {
+	listeners.push_back(x);
+}
+
+PktRecvEvent::PktRecvEvent(UDPSocket* socket)
+	: listeners()
+{
 	assert(recv_event == nullptr);
 	Event::recv_event = this;
 	Event::socket = socket;
+}
+
+void PktRecvEvent::AddListener(void (*x)(TcpPacket pkt)) {
+	listeners.push_back(x);
 }
 
 void Event::EventLoop() {
 	constexpr int max_pkt_size = 2000;
 	char buffer[max_pkt_size];
 	sockaddr_in other_addr;
+	PicklePacket pickle;
 	while (true) {
 		int timeout = int((double)alarms.begin()->first * 1000.0 - Time::Now());
 		if (socket->receivedata(buffer, 
@@ -54,12 +73,12 @@ void Event::EventLoop() {
 			for (auto& x : alarms) {
 				if (x.first > now)
 					break;
-				x.second->DoCallback();
+				x.second->DoCallback(now);
 			}
 		}
 		else {
 			// Packet received
-			recv_event->DoCallback();
+			recv_event->DoCallback(pickle.Unpickle(buffer, strlen(buffer)));
 		}
 	}
 }

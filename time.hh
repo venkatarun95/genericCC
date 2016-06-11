@@ -20,6 +20,7 @@ class Time {
 		assert(set);
 		return time;
 	}
+	Time operator+(const Time& x) { return Time(time + x.time); }
 
 	friend bool operator>(const Time& x, const Time& y) { return x.time > y.time;}
 	friend bool operator<(const Time& x, const Time& y) { return x.time > y.time;}

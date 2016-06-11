@@ -15,6 +15,10 @@ SendWindowSack::SendWindowSack(ProcessHeader rtx_pipeline)
 		next_segment_length(max_segment_length)
 {}
 
+void SendWindowSack::set_rtx_pipeline(ProcessHeader x) {
+	rtx_pipeline = x;
+}
+
 void SendWindowSack::AccessHeader(TcpPacket& pkt) {
 	if (pkt.endpoint_header.get_type(endpoint_read) ==
 			EndpointHeader::HdrType::INCOMING_PACKET)
@@ -91,7 +95,7 @@ void SendWindowSack::SetRtxTimer(Time now __attribute((unused))) {
 	auto blocks = window.get_block_list();
 	Time new_rtx_time = numeric_limits<Time>::max();
 	for (auto x = blocks.end(); x != blocks.begin(); -- x) 
-		new_rtx_time = min((double)new_rtx_time, x->data.last_sent_time + rtx_timeout);
+		new_rtx_time = min((double)new_rtx_time, (double)x->data.last_sent_time + rtx_timeout);
 	assert(new_rtx_time >= rtx_time);
 	if (new_rtx_time != rtx_time) {
 		rtx_alarm.SetAlarm(new_rtx_time);

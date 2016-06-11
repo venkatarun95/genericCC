@@ -8,8 +8,10 @@
 #include "tcp-header.hh"
 #include "udp-socket.hh"
 
+#undef  NUM_PACKETS_PER_LINK_RATE_MEASUREMENT
 #define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT (50)
 // the lower the value, the slower the exponential averaging
+#undef LINK_RATE_MEASUREMENT_ALPHA
 #define LINK_RATE_MEASUREMENT_ALPHA (1)
 
 const int num_packets_per_link_rate_measurement = NUM_PACKETS_PER_LINK_RATE_MEASUREMENT;
@@ -43,10 +45,10 @@ int main( int argc, char* argv[] ) {
 	socket.bindsocket( dstaddr, dstport, myaddr, myport );
 
 	const int src_id = 42; // some arbitrary number
-	const int packet_size = sizeof(TCPHeader)+2;
-	TCPHeader header, ack_header;
+	const int packet_size = sizeof(TcpHeader)+2;
+	TcpHeader header, ack_header;
 
-	// this is the data that is transmitted. A sizeof(TCPHeader) header followed by a sring of dashes
+	// this is the data that is transmitted. A sizeof(TcpHeader) header followed by a sring of dashes
 	char buf[packet_size];
 	memset(buf, '-', sizeof(char)*packet_size);
 	buf[packet_size-1] = '\0';
@@ -80,7 +82,7 @@ int main( int argc, char* argv[] ) {
 			header.sender_timestamp = cur_time;
 			header.receiver_timestamp = 0;
 
-			memcpy( buf, &header, sizeof(TCPHeader) );
+			memcpy( buf, &header, sizeof(TcpHeader) );
 			socket.senddata( buf, packet_size, NULL );
 
 			cur_time = current_timestamp( start_time_point );
@@ -95,7 +97,7 @@ int main( int argc, char* argv[] ) {
 				assert( false );
 			}
 
-			memcpy(&ack_header, buf, sizeof(TCPHeader));
+			memcpy(&ack_header, buf, sizeof(TcpHeader));
 			ack_header.seq_num ++; // because the receiver doesn't do that for us yet
 
 			if ( ack_header.src_id != src_id || ack_header.flow_id != 0 ) {

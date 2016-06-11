@@ -19,6 +19,12 @@ class SendWindowSack : public HeaderAccessor {
 public:
 	// This will fire outgoing packets on rtx timeout in the given pipe.
 	SendWindowSack(ProcessHeader rtx_pipeline);
+	// SendWindowSack(const SendWindowSack&) { assert(false); }
+	// SendWindowSack& operator=(const SendWindowSack&) { assert(false); return *this; }
+
+	// Set RTX pipeline later if not available during construction. But
+	// it must be set very soon (ie. before sender tries to retransmit anything.
+	void set_rtx_pipeline(ProcessHeader x);
 
   struct BlockData {
 		BlockData() : last_sent_time(), acked(), num_times_transmitted() {}

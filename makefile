@@ -22,7 +22,10 @@ prober: prober.o udp-socket.o
 receiver: receiver.o udp-socket.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
-test: tests/test.o window-blocks.o send-window.o process-header.o events.o
+test: tests/test.o window-blocks.o send-window.o process-header.o events.o recv-window.o time.o udp-socket.o pickle-packet.o
+	$(CXX) $(inputs) -o $(output) $(LIBS)
+
+node: window-blocks.o send-window.o process-header.o events.o recv-window.o time.o udp-socket.o pickle-packet.o node.o
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
 %.o: %.cc
