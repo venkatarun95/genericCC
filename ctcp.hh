@@ -27,9 +27,6 @@ private:
   UDPSocket socket;
   ConnectionType conntype;
 
-  string myaddr;
-  int myport;
-
   string dstaddr;
   int dstport;
 
@@ -47,12 +44,10 @@ private:
 
 public:
 
-  CTCP( T s_congctrl, string ipaddr, int port, string s_myaddr, int s_myport ) 
+  CTCP( T s_congctrl, string ipaddr, int port ) 
   :   congctrl( s_congctrl ), 
     socket(), 
     conntype( SENDER ),
-    myaddr( s_myaddr ),
-    myport( s_myport ), 
     dstaddr( ipaddr ),
     dstport( port ),
     _last_send_time( 0.0 ),
@@ -63,15 +58,13 @@ public:
     tot_bytes_transmitted( 0 ),
     tot_packets_transmitted( 0 )
   {
-    socket.bindsocket( ipaddr, port, myaddr, myport );
+    socket.bindsocket( ipaddr, port );
   }
 
   CTCP( CTCP<T> &other )
   : congctrl( other.congctrl ),
     socket(),
     conntype( other.conntype ),
-    myaddr( other.myaddr ),
-    myport( other.myport ),
     dstaddr( other.dstaddr ),
     dstport( other.dstport ),
     _last_send_time( 0.0 ),
@@ -82,7 +75,7 @@ public:
     tot_bytes_transmitted( 0 ),
     tot_packets_transmitted( 0 )
   {
-    socket.bindsocket( dstaddr, dstport, myaddr, myport );
+    socket.bindsocket( dstaddr, dstport );
   }
 
   //duration in milliseconds

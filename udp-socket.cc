@@ -8,25 +8,9 @@
 
 using namespace std;
 
-int UDPSocket::bindsocket(string s_ipaddr, int s_port, string myaddr /* __attribute((unused)) */, int myport /* __attribute((unused)) */){
+int UDPSocket::bindsocket(string s_ipaddr, int s_port){
 	ipaddr = s_ipaddr;
 	port = s_port;
-	sockaddr_in my_addr;
-	
-	memset((char*) &my_addr, 0, sizeof(my_addr));
-	my_addr.sin_family = AF_INET;
-    my_addr.sin_port = htons(myport);
-    if (inet_aton(myaddr.c_str(), &my_addr.sin_addr) == 0) 
-    {
-        std::cerr<<"inet_aton failed while binding to port. Check the format of given ip address. Code: "<<errno<<endl;
-        return -1;
-    }
-    myport = myport*2;
-    if (bind(udp_socket, (struct sockaddr *)&my_addr, sizeof(my_addr)) < 0 ){
-    	std::cerr<<"Failed to bind to port. Code: "<<errno<<endl;
-        return -2;
-    }
-
 	bound = true;
 	return 0;
 }

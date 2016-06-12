@@ -35,7 +35,7 @@ void punch_NAT(string serverip, UDPSocket &sender_socket) {
 	UDPSocket::SockAddress addr_holder;
 	UDPSocket server_socket;
 
-	server_socket.bindsocket(serverip, 4839, "0.0.0.0", 0);
+	server_socket.bindsocket(serverip, 4839);
 	while (1) {
 		this_thread::sleep_for( chrono::seconds(5) );
 

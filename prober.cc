@@ -27,20 +27,18 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
 }
 
 int main( int argc, char* argv[] ) {
-	string dstaddr, myaddr;
-	int dstport, myport;
+	string dstaddr;
+	int dstport;
 	if( argc != 5 ){
-		cout << "Usage: ./prober dstaddr myaddr dstport outfilename " << endl;
+		cout << "Usage: ./prober dstaddr dstport outfilename " << endl;
 		exit( 0 );
 	}
 	dstaddr = argv[1];
-	myaddr = argv[2];
-	dstport = atoi( argv[3] );
-	myport = 0;
+	dstport = atoi( argv[2] );
 	LINK_LOGGING_FILENAME = argv[4];
 
 	UDPSocket socket;
-	socket.bindsocket( dstaddr, dstport, myaddr, myport );
+	socket.bindsocket( dstaddr, dstport );
 
 	const int src_id = 42; // some arbitrary number
 	const int packet_size = sizeof(TCPHeader)+2;
