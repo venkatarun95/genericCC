@@ -8,7 +8,7 @@
 #include "tcp-header.hh"
 #include "udp-socket.hh"
 
-#define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT (50)
+#define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT (30)
 // the lower the value, the slower the exponential averaging
 #define LINK_RATE_MEASUREMENT_ALPHA (1)
 
@@ -29,13 +29,13 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
 int main( int argc, char* argv[] ) {
 	string dstaddr;
 	int dstport;
-	if( argc != 5 ){
+	if( argc != 4 ){
 		cout << "Usage: ./prober dstaddr dstport outfilename " << endl;
 		exit( 0 );
 	}
 	dstaddr = argv[1];
 	dstport = atoi( argv[2] );
-	LINK_LOGGING_FILENAME = argv[4];
+	LINK_LOGGING_FILENAME = argv[3];
 
 	UDPSocket socket;
 	socket.bindsocket( dstaddr, dstport );
@@ -90,7 +90,9 @@ int main( int argc, char* argv[] ) {
 			sockaddr_in other_addr;
 			if( socket.receivedata( buf, packet_size, -1, other_addr ) == 0 ) {
 				cur_time = current_timestamp( start_time_point );
-				assert( false );
+        --i;
+        continue;
+				//assert( false );
 			}
 
 			memcpy(&ack_header, buf, sizeof(TCPHeader));
