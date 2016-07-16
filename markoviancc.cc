@@ -63,37 +63,57 @@ void MarkovianCC::init() {
 
 void MarkovianCC::update_delta(bool pkt_lost) {
 	double cur_time = current_timestamp();
-	double rtt_ewma = max(rtt_acked, rtt_unacked);
-	if (utility_mode == BOUNDED_PERCENTILE_DELAY_END)
-		rtt_ewma = percentile_delay.get_percentile_value();
-
+	double rtt_ewma = max((double)rtt_acked, (double)rtt_unacked);
 	if (utility_mode == PFABRIC_FCT) {
-		delta = 0.05 + 1.0 * (1.0 - exp(-1.0 * 0.00001 * flow_length));
+		delta = 0.5 + 1.0 * (1.0 - exp(-1.0 * 1e-2 * flow_length));
+		return;
   }
-	else if (utility_mode == BOUNDED_DELAY_END 
-					 || utility_mode == BOUNDED_PERCENTILE_DELAY_END) {
-		if (prev_delta_update_time_loss < cur_time - rtt_ewma && pkt_lost) {
-			delta += 0.01;
-			//delta *= 1.1;
-			//cout << "@ " << cur_time << " " << delta << " Loss" << endl;
-			prev_delta_update_time_loss = cur_time;
-			return;
-		}
+	
+	if (utility_mode == BOUNDED_QDELAY_END)
+		rtt_ewma -= min_rtt;
 
+	if (utility_mode == BOUNDED_DELAY_END || utility_mode == BOUNDED_QDELAY_END) {
+		if (pkt_lost && prev_delta_update_time_loss < cur_time - rtt_ewma) {
+			delta += 0.1;
+			prev_delta_update_time_loss = cur_time;
+			cout << delta << " " << rtt_ewma << " " << delay_bound << " " << pkt_lost << " " << cur_time << endl;
+			return;
+    }
 		if (prev_delta_update_time > cur_time - rtt_ewma)
 			return;
 		prev_delta_update_time = cur_time;
 		
 		if (rtt_ewma > delay_bound)
-			delta += 0.01; //*= 1.1;
+			delta += 0.01;
 		else if (rtt_ewma < delay_bound)
-			delta /= 1.1; //1.0 / (1.0 / delta + 0.01);
+			delta /= 1.1;
 		delta = max(0.01, delta);
-		//cout << "@ " << cur_time << " " << delta << " " << rtt_ewma << " " << delay_bound << " " << pkt_lost << endl;
+		cout << "@ " << cur_time << " " << delta << " " << " " << rtt_ewma << " " << delay_bound << endl;
 	}
-	assert(utility_mode == PFABRIC_FCT || utility_mode == CONSTANT_DELTA  ||
-				 utility_mode == BOUNDED_DELAY_END || 
-				 utility_mode == BOUNDED_PERCENTILE_DELAY_END);
+
+	else if (utility_mode == MAX_THROUGHPUT) {
+    assert(false);
+	}
+	else if (utility_mode == TCP_COOP) {
+    if (pkt_lost)
+      loss_in_last_rtt = true;
+		if (prev_delta_update_time < cur_time - rtt_acked) {
+      // Update loss_rate
+      loss_rate *= 1.0 - alpha_loss * cur_intersend_time / rtt_ewma;
+      if (loss_in_last_rtt) {
+        loss_rate += alpha_loss * cur_intersend_time / rtt_ewma;
+        loss_in_last_rtt = false;
+      }
+      
+			// if (loss_rate > 3  * cur_intersend_time * cur_intersend_time / (2.0 * rtt_ewma * rtt_ewma))
+      if (loss_rate > 2.0 * cur_intersend_time / rtt_ewma)
+				delta += 0.1;
+			else
+				delta /= 1.01;
+			cout << " " << delta << " " << cur_time << " " << loss_rate << " " << 3 * cur_intersend_time / (2.0 * rtt_ewma) << endl;
+		}
+	}
+	//assert(utility_mode == PFABRIC_FCT || utility_mode == CONSTANT_DELTA || utility_mode == BOUNDED_DELAY_END);
 }
 
 double MarkovianCC::randomize_intersend(double intersend) {
@@ -214,11 +234,18 @@ void MarkovianCC::close() {
 }
 
 void MarkovianCC::interpret_config_str(string config) {
+	// Overriding config string for diff-delays experiment
+	// utility_mode = BOUNDED_QDELAY_END;
+	// delay_bound = 0.1;
+	// cout << "Set delay bound to: " << delay_bound << endl;
+	// return;
+
 	// Format - delta_update_type:param1:param2...
 	// Delta update types:
 	//   -- constant_delta - params:- delta value
 	//   -- pfabric_fct - params:- none
 	//   -- bounded_delay - params:- delay bound (s)
+  //   -- bounded_delay_end - params:- delay bound (s), done in an end-to-end manner
 	delta = 1.0; // If delta is not set in time, we don't want it to be 0
 	if (config.substr(0, 15) == "constant_delta:") {
 		utility_mode = CONSTANT_DELTA;
@@ -232,19 +259,36 @@ void MarkovianCC::interpret_config_str(string config) {
 	else if (config.substr(0, 14) == "bounded_delay:") {
 		utility_mode = BOUNDED_DELAY;
 		delay_bound = stof(config.substr(14, string::npos).c_str());
-		cout << "Bounding delay to " << delay_bound << "s" << endl;
+		cout << "Bounding delay to " << delay_bound << " s" << endl;
 	}
 	else if (config.substr(0, 18) == "bounded_delay_end:") {
-		delta = 1;
 		utility_mode = BOUNDED_DELAY_END;
 		delay_bound = stof(config.substr(18, string::npos).c_str());
-		cout << "Bounding delay to " << delay_bound << " ms in an end-to-end manner" << endl;
+		cout << "Bounding delay to " << delay_bound << " s in an end-to-end manner" << endl;
 	}
-	else if (config.substr(0, 29) == "bounded_percentile_delay_end:") {
-		delta = 0.3;
-		utility_mode = BOUNDED_PERCENTILE_DELAY_END;
-		delay_bound = stof(config.substr(29, string::npos).c_str());
-		cout << "Bounding percentile delay to " << delay_bound << " ms in an end-to-end manner" << endl;
+	else if (config.substr(0, 18) == "bounded_qdelay_end:") {
+		utility_mode = BOUNDED_QDELAY_END;
+		delay_bound = stof(config.substr(18, string::npos).c_str());
+		cout << "Bounding queuing delay to " << delay_bound << " s in an end-to-end manner" << endl;
+	}
+	else if (config.substr(0, 18) == "bounded_fdelay_end:") {
+		utility_mode = BOUNDED_FDELAY_END;
+		delay_bound = stof(config.substr(18, string::npos).c_str());
+		cout << "Bounding fractional queuing delay to " << delay_bound << " s in an end-to-end manner" << endl;
+	}
+	else if (config.substr(0, 14) == "max_throughput") {
+		utility_mode = MAX_THROUGHPUT;
+		cout << "Maximizing throughput" << endl;
+	}
+	else if (config.substr(0, 16) == "different_deltas") {
+    assert(false);
+		utility_mode = CONSTANT_DELTA;
+		// delta = flow_id * 0.5;
+		cout << "Setting constant delta to " << delta << endl;
+	}
+	else if (config.substr(0, 8) == "tcp_coop") {
+		utility_mode = TCP_COOP;
+		cout << "Cooperating with TCP" << delta << endl;
 	}
 	else {
 		utility_mode = CONSTANT_DELTA;

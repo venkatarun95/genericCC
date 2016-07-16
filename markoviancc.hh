@@ -19,6 +19,9 @@ class MarkovianCC : public CCC {
 
 	// Some adjustable parameters
 	static constexpr double alpha_rtt = 1.0 / 8.0;
+  // This factor is normalizes w.r.t expected Newreno window size for
+  // TCP cooperation
+	static constexpr double alpha_loss = 1.0 / 2.0;
 	static constexpr double rtt_averaging_interval = 0.1;
 	static constexpr int num_probe_pkts = 2;
 	static constexpr double alpha_interarrival_time = 1.0 / 2.0;
@@ -60,12 +63,16 @@ class MarkovianCC : public CCC {
 
 	// Variables for expressing explicit utility
 	enum {CONSTANT_DELTA, PFABRIC_FCT, DEL_FCT, BOUNDED_DELAY, BOUNDED_DELAY_END,
-				BOUNDED_PERCENTILE_DELAY_END} utility_mode;
+				BOUNDED_PERCENTILE_DELAY_END, TCP_COOP, MAX_THROUGHPUT, BOUNDED_QDELAY_END,
+        BOUNDED_FDELAY_END} utility_mode;
 	int flow_length;
 	double delay_bound;
 	double prev_delta_update_time;
 	double prev_delta_update_time_loss;
 	Percentile percentile_delay;
+  // To cooperate with TCP, measured in fraction of RTTs with loss
+	double loss_rate;
+  bool loss_in_last_rtt;
 
 	#ifdef SIMULATION_MODE
 	Time cur_tick;
@@ -110,6 +117,8 @@ public:
 		prev_delta_update_time(),
 		prev_delta_update_time_loss(),
 		percentile_delay(),
+    loss_rate(),
+    loss_in_last_rtt(false),
 		#ifdef SIMULATION_MODE
 		cur_tick()
     #else
