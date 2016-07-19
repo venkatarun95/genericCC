@@ -47,9 +47,9 @@ public:
 		_traffic_params._on_off._mean_off_unit = s_mean_off_unit;
 
 		// parse traffic_params
-		int start_pos = 0;
+		unsigned int start_pos = 0;
 		while (start_pos < traffic_params.length()) {
-			int end_pos = traffic_params.find(',', start_pos);
+			unsigned int end_pos = traffic_params.find(',', start_pos);
 			if (end_pos == std::string::npos)
 				end_pos = traffic_params.length();
 			

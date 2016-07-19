@@ -6,13 +6,19 @@ INCLUDES :=	-I./protobufs-default -I./udt
 
 LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc
 #$(MEMORY_STYLE)/libremyprotos.a
-OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o markoviancc.o utilities.o
+OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o markoviancc.o utilities.o #protobufs-default/dna.pb.o
 
 all: sender receiver prober
 
 .PHONY: all
 
-sender: $(OBJECTS) sender.o $(MEMORY_STYLE)/libremyprotos.a
+protobufs-default/dna.pb.cc: protobufs-default/dna.proto
+	protoc --cpp_out=. protobufs-default/dna.proto
+
+protobufs-default/dna.pb.o: protobufs-default/dna.pb.cc
+	$(CXX) -I.. -I. -O2 -c protobufs-default/dna.pb.cc -o protobufs-default/dna.pb.o
+
+sender: $(OBJECTS) sender.o protobufs-default/dna.pb.o # $(MEMORY_STYLE)/libremyprotos.a
 	$(CXX) $(inputs) -o $(output) $(LIBS)
 
 prober: prober.o udp-socket.o
