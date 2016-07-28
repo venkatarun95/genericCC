@@ -23,7 +23,7 @@ class MarkovianCC : public CCC {
   // TCP cooperation
 	static constexpr double alpha_loss = 1.0 / 2.0;
 	static constexpr double rtt_averaging_interval = 0.1;
-	static constexpr int num_probe_pkts = 2;
+	static constexpr int num_probe_pkts = 10;
 	static constexpr double alpha_interarrival_time = 1.0 / 2.0;
 	static constexpr double delta_decay_rate = 0.84; // sqrt(0.5)
 

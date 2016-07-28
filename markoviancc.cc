@@ -110,7 +110,7 @@ void MarkovianCC::update_delta(bool pkt_lost) {
 				delta += 0.1;
 			else
 				delta /= 1.01;
-			cout << " " << delta << " " << cur_time << " " << loss_rate << " " << 3 * cur_intersend_time / (2.0 * rtt_ewma) << endl;
+			// cout << " " << delta << " " << cur_time << " " << loss_rate << " " << 3 * cur_intersend_time / (2.0 * rtt_ewma) << endl;
 		}
 	}
 	//assert(utility_mode == PFABRIC_FCT || utility_mode == CONSTANT_DELTA || utility_mode == BOUNDED_DELAY_END);
@@ -129,23 +129,23 @@ void MarkovianCC::update_intersend_time() {
 	if (num_pkts_acked < num_probe_pkts - 1)
 		return;
 	_the_window = numeric_limits<double>::max();
-	constexpr double link_intersend_time __attribute((unused)) = 9.68e-5;
-	
+
 	double queuing_delay = max((double)rtt_acked, (double)rtt_unacked) - min_rtt;
-	//queuing_delay += pseudo_delay;
 	double target_intersend_time = delta * queuing_delay;
 
+  // For second RTT, keep delta = 1
+  if (cur_time < 2 * rtt_acked) {
+    target_intersend_time = max(1.0, delta) * queuing_delay;
+  }
+  
 	if (prev_intersend_time != 0)	
 		cur_intersend_time = max(0.5 * prev_intersend_time, target_intersend_time);
 	else
 		cur_intersend_time = target_intersend_time;
 	//cur_intersend_time = min(cur_intersend_time, min_rtt / 2.0);
 
-	//if (num_losses >= 3 || prev_num_losses >= 3)
-	//cur_intersend_time = max(cur_intersend_time, (double)interarrival_time);
-
 	_intersend_time = randomize_intersend(cur_intersend_time);
-	//cout << "@ " << cur_intersend_time << " " << queuing_delay << " " << _intersend_time << " " << rtt_acked << " " << rtt_unacked << endl;
+	// cout << "@ " << cur_intersend_time << " " << queuing_delay << " " << _intersend_time << " " << rtt_acked << " " << rtt_unacked << endl;
 }
 
 void MarkovianCC::onACK(int ack, 
