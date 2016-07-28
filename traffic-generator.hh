@@ -47,13 +47,13 @@ public:
 		_traffic_params._on_off._mean_off_unit = s_mean_off_unit;
 
 		// parse traffic_params
-		unsigned int start_pos = 0;
+		size_t start_pos = 0;
 		while (start_pos < traffic_params.length()) {
-			unsigned int end_pos = traffic_params.find(',', start_pos);
+			size_t end_pos = traffic_params.find(',', start_pos);
 			if (end_pos == std::string::npos)
 				end_pos = traffic_params.length();
 			
-			std::string arg = traffic_params.substr(start_pos, end_pos);
+			std::string arg = traffic_params.substr(start_pos, end_pos - start_pos);
 			if (arg == "exponential")
 				_traffic_type = TrafficType::EXPONENTIAL_ON_OFF;
 			else if (arg == "deterministic")
