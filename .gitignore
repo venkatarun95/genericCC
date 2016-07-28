@@ -36,8 +36,12 @@ udt/*
 # Trace files
 trace*
 
+# Protobuf compiled files
+*.pb.*
+
 # Temporaries
 tmp*
+*~
 
 # Compiled Python
 *.pyc
