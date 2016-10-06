@@ -2,6 +2,7 @@
 #define UTILITIES_HH
 
 #include <cassert>
+#include <list>
 #include <math.h>
 #include <queue>
 
@@ -134,6 +135,26 @@ class Percentile {
 
 	void push(ValType val);
 	ValType get_percentile_value();
+  void reset() {while(!window.empty())window.pop();}
+};
+
+// Estimates the packet loss rate for TCP friendliness. Uses the
+// method described in "Equation Based Congestion Control for Unicast
+// Applications"
+class LossRateEstimate {
+  const int window = 8;
+  std::list<double> loss_events;
+  int cur_loss_interval;
+
+public:
+  LossRateEstimate() : loss_events(), cur_loss_interval() {}
+
+  void reset() {loss_events.clear(); cur_loss_interval = 0; }
+	void update(bool lost);
+	double value();
+	// true if update has been called atleast once
+	bool is_valid() const {return loss_events.size() == (unsigned)window;}
+
 };
 
 #endif

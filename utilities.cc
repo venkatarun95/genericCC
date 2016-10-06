@@ -76,3 +76,36 @@ Percentile::ValType Percentile::get_percentile_value() {
 	}
 	return largest[N-1];
 }
+
+
+void LossRateEstimate::update(bool lost) {
+  if (lost) {
+    if (value() > 0.0 && cur_loss_interval <= max(0.1 / value(), 1.0)) return;
+    loss_events.push_back(cur_loss_interval);
+    cout << cur_loss_interval << endl;
+    cur_loss_interval = 0;
+    if ((int)loss_events.size() > window)
+      loss_events.pop_front();
+  }
+  else
+    ++ cur_loss_interval;
+}
+
+double LossRateEstimate::value() {
+  double sum = 0.0, sum_weight = 0.0;
+  int i = 0;
+  if (loss_events.size() == 0) return 0.0;
+  int cur_window = (int)loss_events.size();
+  for (auto x = loss_events.rbegin(); x != loss_events.rend(); ++x) {
+    double weight = 1.0;
+    if (i >= cur_window / 2)
+      weight = 1.0 - (i + 1.0 - cur_window / 2.0) / (cur_window / 2.0 + 1);
+    sum += weight * (*x);
+    sum_weight += weight;
+  }
+  if (sum / sum_weight < cur_loss_interval) {
+    sum += cur_loss_interval;
+    sum_weight += 1;
+  }
+  return sum_weight / sum;
+}
