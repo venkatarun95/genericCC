@@ -69,133 +69,41 @@ void MarkovianCC::init() {
   #endif
 }
 
-void MarkovianCC::update_delta(bool pkt_lost) {
-	double cur_time = current_timestamp();
-	double rtt_ewma = max((double)rtt_acked, (double)rtt_unacked);
-	if (utility_mode == PFABRIC_FCT) {
-		delta = 0.5 + 1.0 * (1.0 - exp(-1.0 * 1e-2 * flow_length));
-		return;
-  }
-  // if (prev_delta_update_time_loss < cur_time - rtt_ewma) {
-  //   cout << min_rtt << " " << cur_intersend_time << endl;
-  //   prev_delta_update_time_loss = cur_time;
-  // }
-	
-	if (utility_mode == BOUNDED_QDELAY_END)
-		rtt_ewma -= min_rtt;
-
-  if (utility_mode == BOUNDED_PERCENTILE_DELAY_END)
-    rtt_ewma = percentile_delay.get_percentile_value();
-
-	if (utility_mode == BOUNDED_DELAY_END || utility_mode == BOUNDED_QDELAY_END || utility_mode == BOUNDED_PERCENTILE_DELAY_END) {
-		if (pkt_lost && prev_delta_update_time_loss < cur_time - rtt_ewma) {
-      //delta += 0.1 * sqrt(delta);
-      delta *= 2;
-      //delta = min(delta, 1.0);
-      slow_start = false;
-      percentile_delay.reset();
-			prev_delta_update_time_loss = cur_time;
-			cout << delta << " " << rtt_ewma << " " << delay_bound << " " << pkt_lost << " " << cur_time << endl;
-			return;
-    }
-		if (prev_delta_update_time > cur_time - rtt_ewma)
-			return;
-		prev_delta_update_time = cur_time;
-		
-		if (rtt_ewma > delay_bound) {
-      //delta += 0.01 * sqrt(delta);
-      //delta *= 1.33;
-      delta *= 2;
-      //delta = min(delta, 1.0);
-      slow_start = false;
-      percentile_delay.reset();
-    }
-		else if (rtt_ewma < delay_bound) {
-      if (slow_start)
-        delta /= 2;
-      else
-        if (delta < 1)
-          delta = 1 / (1 / delta + 1);
-        else
-          delta -= 0.5;
-    }
-			//delta /= 1.1;
-		//delta = max(0.01, delta);
-		cout << "@ " << cur_time << " " << delta << " " << " " << rtt_ewma << " " << delay_bound << endl;
-	}
-
-	else if (utility_mode == MAX_THROUGHPUT) {
-    assert(false);
-	}
-	else if (utility_mode == TCP_COOP) {
-    // if (pkt_lost)
-    //   loss_in_last_rtt = true;
-		// if (prev_delta_update_time < cur_time - rtt_acked) {
-    //   // Update loss_rate
-    //   loss_rate *= 1.0 - alpha_loss * cur_intersend_time / rtt_ewma;
-    //   if (loss_in_last_rtt) {
-    //     loss_rate += alpha_loss * cur_intersend_time / rtt_ewma;
-    //     loss_in_last_rtt = false;
-    //   }
-      
-		// 	// if (loss_rate > 3  * cur_intersend_time * cur_intersend_time / (2.0 * rtt_ewma * rtt_ewma))
-    //   if (loss_rate > 2.0 * cur_intersend_time / rtt_ewma) {
-    //     if (delta < 0.1)
-    //       delta += 0.01;
-    //     else
-    //       delta += 0.1;
-    //     //delta += 0.1 * sqrt(delta);
-    //   }
-		// 	else
-		// 		delta /= 1.1;
-    //   prev_delta_update_time = cur_time;
-		// 	cout << " " << delta << " " << cur_time << " " << cur_intersend_time << loss_rate << " " << 3 * cur_intersend_time / (2.0 * rtt_ewma) << endl;
-		// }
-
-    loss_rate.update(pkt_lost);
-		if (prev_delta_update_time < cur_time - rtt_acked) {
-      double loss = loss_rate.value();
-      double allowed_rate = 1.0 / (rtt_ewma * sqrt(2.0 * loss / 3.0) + 4.0 * rtt_ewma * min(1.0 ,3.0 * sqrt(3.0 * loss / 8.0)) * loss * (1.0 + 32 * loss * loss));
-      //double allowed_rate = 1.0 / (rtt_ewma * sqrt(loss));
-      if (cur_intersend_time < 1e-40 || loss == 0.0) return;
-			if (1.0 / cur_intersend_time > allowed_rate)
-				delta += 0.1 * sqrt(delta); //delta += 0.01;
-			else
-				delta /= 1.1;
-			prev_delta_update_time = cur_time;
-			cout << " " << delta << " " << cur_time << " " << loss << " " << allowed_rate << " " << 1.0 / cur_intersend_time << endl;
-    }
-	}
-	//assert(utility_mode == PFABRIC_FCT || utility_mode == CONSTANT_DELTA || utility_mode == BOUNDED_DELAY_END);
-}
-
 double MarkovianCC::randomize_intersend(double intersend) {
 	if (intersend == 0)
 		return 0;
-	return rand_gen.exponential(intersend);
+	//return rand_gen.exponential(intersend);
 	//return rand_gen.uniform(0.5*intersend, 1.5*intersend);
-	//return intersend;
+	return intersend;
 }
 
 void MarkovianCC::update_intersend_time() { 
 	double cur_time __attribute((unused)) = current_timestamp();
 	if (num_pkts_acked < num_probe_pkts - 1)
 		return;
-	_the_window = numeric_limits<double>::max();
 
-	double queuing_delay = max((double)rtt_acked, (double)rtt_unacked) - min_rtt;
-	double target_intersend_time = delta * sqrt(queuing_delay);
+  double rtt_ewma = max((double)rtt_acked, (double)rtt_unacked);
+	double queuing_delay = rtt_ewma - min_rtt;
 
-  // For second RTT, keep delta = 1
-  // if (cur_time < 2 * rtt_acked) {
-  //   target_intersend_time = max(1.0, delta) * queuing_delay;
-  // }
+  if (queuing_delay == 0) return;
+  double target_window = rtt_ewma * 1 / queuing_delay;
+  //target_window = min(target_window, rtt_ewma * link_rate);
+
+  if (_the_window == num_probe_pkts && _intersend_time == 0) {
+    cout << "S " << cur_time << " " << _the_window << endl;
+    _the_window = target_window;
+  }
+
+  if (_the_window < target_window) {
+    _the_window += 1 / _the_window;
+  }
+  else {
+     _the_window -= 1 / _the_window;
+  }
+  _the_window = max(1.0, _the_window);
+  cout << "W " << cur_time << " " << _the_window << " " << rtt_ewma << " " << min_rtt << " " << target_window << endl;
   
-	if (prev_intersend_time != 0)	
-		cur_intersend_time = max(0.5 * prev_intersend_time, target_intersend_time);
-	else
-		cur_intersend_time = target_intersend_time;
-  cur_intersend_time = max(target_intersend_time, 0.05);
+  cur_intersend_time = 0.5 * _the_window / rtt_ewma;
 	//cur_intersend_time = min(cur_intersend_time, min_rtt / 2.0);
 
 	_intersend_time = randomize_intersend(cur_intersend_time);
@@ -236,7 +144,6 @@ void MarkovianCC::onACK(int ack,
 	}
 
 	percentile_delay.push(cur_time - sent_time);
-	update_delta(false);
 	update_intersend_time();
 
 	if (unacknowledged_packets.count(seq_num) != 0 &&
@@ -251,7 +158,6 @@ void MarkovianCC::onACK(int ack,
 			prev_intersend_time = x.second.intersend_time;
 			prev_intersend_time_vel = x.second.intersend_time_vel;
 			if (x.first < seq_num) {
-				update_delta(true);
 				++ num_losses;
 				++ num_pkts_lost;
 				pseudo_delay += interarrival_time;

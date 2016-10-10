@@ -87,8 +87,6 @@ class MarkovianCC : public CCC {
 
 	void update_intersend_time();
 	
-	void update_delta(bool pkt_lost);
-	
 public:
 	void interpret_config_str(std::string config);
 	
