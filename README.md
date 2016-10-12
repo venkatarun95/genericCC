@@ -18,10 +18,15 @@ transporting data yet, though such a version is in development in the
 Installation
 ------------
 
+Dependencies: Makepp, Google protocol buffers, Boost C+ library and
+jemalloc. On Ubuntu install using
+
+`sudo apt-get install makepp libboost-dev libprotobuf-dev protobuf-compiler libjemalloc-dev iperf`
+
 Run: `makepp` in the base directory. It should create 'sender' and
-'receiver' executables in the home directory. This requires makepp
-(short for "make plus plus"). On ubuntu, install using `sudo apt-get
-install makepp`. 'iperf' is required for running kernel TCP.
+'receiver' executables in the home directory. Uses the makepp build
+system (short for "make plus plus"). 'iperf' is required for running
+kernel TCP.
 
 Usage
 -----------
