@@ -27,16 +27,9 @@ void TimeEwma::update(double value, double timestamp) {
 	double ewma_factor = pow(alpha, timestamp - last_update_timestamp);
 	double new_denom = 1.0 + ewma_factor * denominator;
 	double new_ewma = (value + ewma_factor * ewma * denominator) / new_denom;
-	//assert((value < ewma && new_ewma < ewma) || (value >= ewma && new_ewma >= ewma));
-	if ((value > ewma && new_ewma < ewma) || (value < ewma && new_ewma > ewma)) {
-		cerr << "Ewma overflowed. Resetting" << endl;
-		ewma = value;
-		denominator = 1;
-	}
-	else {
-		ewma = new_ewma;
-		denominator = new_denom;
-	}
+	assert((value < ewma && new_ewma < ewma) || (value >= ewma && new_ewma >= ewma));
+	ewma = new_ewma;
+	denominator = new_denom;
 	last_update_timestamp = timestamp;	
 }
 
@@ -46,6 +39,7 @@ void TimeEwma::force_set(double value, double timestamp) {
 	last_update_timestamp = timestamp;
 }
 
+
 /*************************** PERCENTILE *******************************/
 void Percentile::push(ValType val) {
 	window.push(val);
@@ -54,8 +48,8 @@ void Percentile::push(ValType val) {
 }
 
 Percentile::ValType Percentile::get_percentile_value() {
-	constexpr int N = (1.0 - percentile) * window_len;
-	ValType largest[N+1]; // Last element is only for making code shorter
+	int N = (1.0 - percentile) * window_len;
+  ValType largest[window_len+1];
 	for (int i = 0; i < N; i++) largest[i] = -1;
 
 	if (window.size() == 0)
@@ -77,10 +71,17 @@ Percentile::ValType Percentile::get_percentile_value() {
 	return largest[N-1];
 }
 
+void Percentile::reset() {
+  while (!window.empty())
+    window.pop();
+}
 
+
+/*********************** LOSS RATE ESTIMATE ***************************/
 void LossRateEstimate::update(bool lost) {
+  //assert(timestamp >= loss_events.back());
   if (lost) {
-    if (value() > 0.0 && cur_loss_interval <= max(0.1 / value(), 1.0)) return;
+    if (cur_loss_interval <= 2) return;
     loss_events.push_back(cur_loss_interval);
     cout << cur_loss_interval << endl;
     cur_loss_interval = 0;

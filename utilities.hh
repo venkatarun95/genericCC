@@ -2,6 +2,7 @@
 #define UTILITIES_HH
 
 #include <cassert>
+#include <iostream>
 #include <list>
 #include <math.h>
 #include <queue>
@@ -15,8 +16,8 @@ class TimeEwma {
  public:
 	// lower the alpha, slower the moving average
 	TimeEwma(const double s_alpha)
-	:	ewma(0.0),
-		denominator(0.0),
+	:	ewma(),
+		denominator(),
 		alpha(1.0 - s_alpha),
 		last_update_timestamp()
 	{
@@ -55,11 +56,8 @@ class PlainEwma {
   }
 
   void update(const double value, const double tmp __attribute((unused)) = 0) {
-		if (valid)
-			ewma = alpha * value + (1.0 - alpha) * ewma;
-		else
-			ewma = value;
     valid = true;
+    ewma = alpha * value + (1.0 - alpha) * ewma;
   }
 
   void round() { 
@@ -73,18 +71,24 @@ class PlainEwma {
 };
 
 // Maintains a sliding window of values for which the average is
-// computed. The window contains values younger than a given constant.
+// computed. The window contains values younger than a given
+// constant. Computes a time average, so each time instant is given
+// equal weightage.
 class WindowAverage {
 	// Format: (value, timestamp)
 	std::queue< std::pair<double, double> > window;
 	double window_size; // In time units
 	double sum;
+	// Timestamp of the value last popped. If 0.0, no value has been
+	// popped yet.
+	double prev_popped_timestamp;
 
  public:
 	WindowAverage(double window_size)
 		: window(),
 			window_size(window_size),
-			sum()
+			sum(0.0),
+			prev_popped_timestamp(0.0)
 	{}
 
 	void force_set(double value, double timestamp) {
@@ -93,10 +97,23 @@ class WindowAverage {
 	}
 
 	void update(double value, double timestamp) {
+		if (window.size() == 0) {
+			// Push two nearby values into the window
+			window.push(std::make_pair(value, timestamp - 1e-3));
+			assert(prev_popped_timestamp == 0.0);
+			update(value, timestamp);
+			return;
+		}
+		sum += value * (timestamp - window.back().second);
 		window.push(std::make_pair(value, timestamp));
-		sum += value;
-		while (window.front().second < timestamp - window_size && window.size() > 1) {
-			sum -= window.front().first;
+
+		// std::cout << "Sum = " << sum << " for " << window.size() << " at " << double(*(this)) << std::endl;
+
+		while (window.front().second < timestamp - window_size && window.size() > 2) {
+			// std::cout << "Deleting: " << window.front().first << " " << sum << " " << window.front().second << " " << timestamp << " " << window_size << " at " << double(*(this)) << std::endl;
+			if (prev_popped_timestamp != 0.0)
+				sum -= window.front().first * (window.front().second - prev_popped_timestamp);
+			prev_popped_timestamp = window.front().second;
 			window.pop();
 		}
 	}
@@ -107,11 +124,13 @@ class WindowAverage {
 		while (!window.empty())
 			window.pop();
 		sum = 0.0;
+		prev_popped_timestamp = 0.0;
 	}
 
 	operator double() const {
-		if (window.size() == 0) return 0.0;
-		return sum / window.size();
+		assert(window.size() != 1);
+		if (window.size() < 2)return 0.0;
+		return sum / (window.back().second - window.front().second);
 	}
 
 	bool valid() const {
@@ -125,17 +144,20 @@ class Percentile {
 	// efficient and to emphasize that the implementation is not
 	// efficient for large window sizes.
 	static constexpr int window_len = 100;
-	static constexpr double percentile = 0.95;
+	double percentile;
 	typedef double ValType;
 
 	std::queue<ValType> window;
 
  public:
-	Percentile() : window() {}
+	Percentile(double percentile) :
+    percentile(percentile),
+    window()
+  {}
 
 	void push(ValType val);
 	ValType get_percentile_value();
-  void reset() {while(!window.empty())window.pop();}
+  void reset();
 };
 
 // Estimates the packet loss rate for TCP friendliness. Uses the
