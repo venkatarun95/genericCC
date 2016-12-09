@@ -82,16 +82,18 @@ void MarkovianCC::update_intersend_time() {
 	if (num_pkts_acked < num_probe_pkts - 1)
 		return;
 
-  double rtt_ewma = max((double)rtt_acked, (double)rtt_unacked);
+  double rtt_ewma = rtt_acked; //max((double)rtt_acked, (double)rtt_unacked);
 	double queuing_delay = rtt_ewma - min_rtt;
 
   if (queuing_delay == 0) return;
-  double target_window = rtt_ewma * 1 / queuing_delay;
+  double target_window = rtt_ewma * delta / queuing_delay;
+  double target_intersend = queuing_delay / delta;
   //target_window = min(target_window, rtt_ewma * link_rate);
 
   if (_the_window == num_probe_pkts && _intersend_time == 0) {
-    cout << "S " << cur_time << " " << _the_window << endl;
+    cout << "S " << cur_time << " " << _the_window << " " << target_intersend << endl;
     _the_window = target_window;
+    cur_intersend_time = target_intersend;
   }
 
   if (_the_window < target_window) {
@@ -100,14 +102,26 @@ void MarkovianCC::update_intersend_time() {
   else {
      _the_window -= 1 / _the_window;
   }
+  if (prev_delta_update_time < cur_time - rtt_ewma) {
+    if (cur_intersend_time > target_intersend)
+      cur_intersend_time = 1 / (1 / cur_intersend_time + 1 / rtt_ewma);
+    else
+      cur_intersend_time = 1 / (1 / cur_intersend_time - 1 / rtt_ewma);
+    prev_delta_update_time = cur_time;
+  }
   _the_window = max(1.0, _the_window);
-  cout << "W " << cur_time << " " << _the_window << " " << rtt_ewma << " " << min_rtt << " " << target_window << endl;
+  if (cur_intersend_time <= 0)
+    cur_intersend_time = rtt_ewma;
   
-  cur_intersend_time = 0.5 * _the_window / rtt_ewma;
-	//cur_intersend_time = min(cur_intersend_time, min_rtt / 2.0);
-
-	_intersend_time = randomize_intersend(cur_intersend_time);
-	//cout << "@ " << cur_intersend_time << " " << queuing_delay << " " << _intersend_time << " " << rtt_acked << " " << rtt_unacked << endl;
+  //cur_intersend_time = 0.5 * rtt_ewma / _the_window;
+  //cur_intersend_time = 1e-6;
+  //cur_intersend_time = min(cur_intersend_time, min_rtt / 2.0);
+  //_the_window = 1e6;
+  cur_intersend_time = 0;
+  cout << "W " << cur_time << " " << _the_window << " " << queuing_delay << " " << rtt_ewma << " " << min_rtt << " " << target_window << " " << cur_intersend_time << endl;
+  
+  _intersend_time = randomize_intersend(cur_intersend_time);
+  //cout << "@ " << cur_intersend_time << " " << queuing_delay << " " << _intersend_time << " " << rtt_acked << " " << rtt_unacked << endl;
 }
 
 void MarkovianCC::onACK(int ack, 
@@ -128,7 +142,7 @@ void MarkovianCC::onACK(int ack,
 		interarrival_time.update(cur_time - prev_ack_time, cur_time / min_rtt);
 	pseudo_delay *= pow(delta_decay_rate, (cur_time - prev_ack_time) / min_rtt);
 	prev_ack_time = cur_time;
-	if (cur_time - monitor_interval_start > max(rtt_acked, rtt_unacked)) {
+	if (cur_time - monitor_interval_start > max((double)rtt_acked, (double)rtt_unacked)) {
 		monitor_interval_start = cur_time;
 		// if (num_losses >= 3)
 		// 	cout << "High loss RTT" << endl;
