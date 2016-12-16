@@ -108,10 +108,12 @@ void MarkovianCC::update_intersend_time() {
 
   if (slow_start) {
     _the_window += 1;
+    //cout << "SS " << cur_time << " " <<  _the_window << " " << target_window << " " <<  _intersend_time << endl;
     if (_the_window >= target_window) {
       slow_start = false;
+      cout << "Exited slow start at window " << _the_window << " at time " << cur_time << endl;
     }
-    cur_intersend_time = 0.5 * rtt_ewma / _the_window;
+    cur_intersend_time = rtt_ewma / _the_window;
     _intersend_time = randomize_intersend(cur_intersend_time);
     return;
   }
@@ -125,7 +127,7 @@ void MarkovianCC::update_intersend_time() {
   _the_window = max(2.0, _the_window);
   cur_intersend_time = 0.5 * rtt_ewma / _the_window;
   _intersend_time = randomize_intersend(cur_intersend_time);
-  //cout << cur_time << " " << _the_window << " " << rtt_ewma << " " << min_rtt << endl;
+  //cout << cur_time << " " << _the_window << " " << target_window << " " << rtt_ewma << " " << min_rtt << endl;
 }
 
 void MarkovianCC::onACK(int ack, 
@@ -188,6 +190,7 @@ void MarkovianCC::onACK(int ack,
 
 void MarkovianCC::onPktSent(int seq_num) {
 	double cur_time = current_timestamp();
+  //cout << "Snd " << cur_time << endl;
   // double tmp_prev_avg_sending_rate = 0.0;
   // if (prev_intersend_time != 0.0)
   //   tmp_prev_avg_sending_rate = 1.0 / prev_intersend_time;

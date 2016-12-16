@@ -187,7 +187,8 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
-      if ((_last_send_time - cur_time) / congctrl.get_intersend_time() > 10)
+      if ((_last_send_time - cur_time) / congctrl.get_intersend_time() > 10 ||
+          seq_num >= _largest_ack + congctrl.get_the_window())
         // Hopeless. Stop trying to compensate.
         _last_send_time = cur_time;
       else
@@ -202,7 +203,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     }
 
     cur_time = current_timestamp( start_time_point );
-    double timeout = _last_send_time + congctrl.get_timeout(); // everything in milliseconds
+    double timeout = _last_send_time + 1000; //congctrl.get_timeout(); // everything in milliseconds
     if(congctrl.get_the_window() > 0)
       timeout = min( timeout, _last_send_time + congctrl.get_intersend_time()*num_packets_per_link_rate_measurement - cur_time );
     
