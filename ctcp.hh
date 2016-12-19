@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <thread>
 
@@ -187,10 +188,12 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
-      if ((_last_send_time - cur_time) / congctrl.get_intersend_time() > 10 ||
-          seq_num >= _largest_ack + congctrl.get_the_window())
+      //cout << cur_time << " " << cur_time - _last_send_time << " " << congctrl.get_intersend_time() << " " << _last_send_time + congctrl.get_intersend_time() - cur_time << endl;
+      if ((cur_time - _last_send_time) / congctrl.get_intersend_time() > 10 ||
+          seq_num >= _largest_ack + congctrl.get_the_window()) {
         // Hopeless. Stop trying to compensate.
         _last_send_time = cur_time;
+      }
       else
         _last_send_time += congctrl.get_intersend_time();
 
@@ -198,8 +201,11 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       congctrl.onPktSent( header.seq_num );
 
       seq_num++;
-      
+
       cur_time = current_timestamp( start_time_point );
+      // cout << ((seq_num < _largest_ack + 1 + congctrl.get_the_window())) << " " 
+      //      << (_last_send_time + congctrl.get_intersend_time() <= cur_time) << " "
+      // 	   << ((byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size) << " " << std::setprecision(10) << _last_send_time << " " << cur_time << " " << congctrl.get_intersend_time() << " " << (cur_time - _last_send_time) / congctrl.get_intersend_time() << endl;
     }
 
     cur_time = current_timestamp( start_time_point );
@@ -216,6 +222,8 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     }
     
     memcpy(&ack_header, buf, sizeof(TCPHeader));
+    if (ack_header.seq_num > _largest_ack)
+    //cout << "Pkt " << cur_time << " " << ack_header.seq_num << " " << _largest_ack << endl;
     ack_header.seq_num++; // because the receiver doesn't do that for us yet
     
     if (ack_header.src_id != src_id || ack_header.flow_id != flow_id){
@@ -224,7 +232,6 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       }
       continue;
     }
-    
     cur_time = current_timestamp( start_time_point );
     
     // Track performance statistics

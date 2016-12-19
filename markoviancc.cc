@@ -95,16 +95,20 @@ double MarkovianCC::randomize_intersend(double intersend) {
 }
 
 void MarkovianCC::update_intersend_time() {
-	double cur_time __attribute((unused)) = current_timestamp();
-	if (num_pkts_acked < num_probe_pkts - 1) // || rtt_acked < min_rtt)
-		return;
+  double cur_time __attribute((unused)) = current_timestamp();
+  if (num_pkts_acked < num_probe_pkts - 1) // || rtt_acked < min_rtt)
+    return;
   double rtt_ewma = rtt_acked; //max((double)rtt_acked, (double)rtt_unacked);
-	double queuing_delay = rtt_ewma - min_rtt;
+  double queuing_delay = rtt_ewma - min_rtt;
   double target_window;
+  
+  static double last_update_time = 0;
+  static int update_amt = 1, update_dir = +1, pkts_per_rtt = 0, prev_update_dir = +1;
+  
   if (queuing_delay == 0)
     target_window = numeric_limits<double>::max();
   else
-    target_window = rtt_ewma * 1 / queuing_delay;
+    target_window = rtt_ewma / (queuing_delay * delta);
 
   if (slow_start) {
     _the_window += 1;
@@ -118,16 +122,35 @@ void MarkovianCC::update_intersend_time() {
     return;
   }
 
+  if (last_update_time + rtt_ewma < cur_time) {
+    if (abs(update_dir) > 2 * pkts_per_rtt / 3) {
+      if (prev_update_dir * update_dir > 0)
+	update_amt *= 2;
+      else {
+	update_amt = 1;
+	prev_update_dir *= -1;
+      }
+    }
+    else
+      update_amt = 1;
+    last_update_time = cur_time;
+    pkts_per_rtt = update_dir = 0;
+  }
+  update_amt = min(update_amt, (int)_the_window);
+  ++ pkts_per_rtt;
+  
   if (_the_window < target_window) {
-    _the_window += 1 / _the_window;
+    ++ update_dir;
+    _the_window += update_amt / _the_window;
   }
   else {
-    _the_window -= 1 / _the_window;
+    -- update_dir;
+    _the_window -= update_amt / _the_window;
   }
   _the_window = max(2.0, _the_window);
-  cur_intersend_time = 0.5 * rtt_ewma / _the_window;
+  cur_intersend_time = rtt_ewma / _the_window;
   _intersend_time = randomize_intersend(cur_intersend_time);
-  //cout << cur_time << " " << _the_window << " " << target_window << " " << rtt_ewma << " " << min_rtt << endl;
+  // cout << cur_time << " " << _the_window << " " << target_window << " " << rtt_ewma << " " << min_rtt << " " << update_amt << " " << update_dir << " " << pkts_per_rtt << endl;
 }
 
 void MarkovianCC::onACK(int ack, 
@@ -178,6 +201,7 @@ void MarkovianCC::onACK(int ack,
 			if (x.first < seq_num) {
 				++ num_pkts_lost;
 				pkt_lost = true;
+				onDupACK();
 			}
 			unacknowledged_packets.erase(x.first);
 		}
@@ -223,9 +247,10 @@ void MarkovianCC::close() {
 void MarkovianCC::onDupACK() {
 	///num_pkts_lost ++;
 	// loss_rate = 1.0 * alpha_loss + loss_rate * (1.0 - alpha_loss);
-  //cout << "Dupack\n";
+  cout << "Dupack\n";
   slow_start = false;
 	update_delta(true);
+	_the_window *= 0.9;
 }
 
 void MarkovianCC::onTimeout() {
