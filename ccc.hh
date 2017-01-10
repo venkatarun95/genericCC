@@ -9,7 +9,7 @@ public:
   CCC() : 
   _intersend_time( 0 ),
   _the_window( 2 ),
-  _timeout( 0.004 ) {}
+  _timeout( 1000 ) {}
 
   virtual ~CCC() {}
 public:
