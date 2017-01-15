@@ -101,6 +101,7 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
   if (utility_mode == AUTO_MODE) {
     if (pkt_lost) {
       is_uniform.update(rtt_acked);
+      cout << "Packet lost: " << cur_time << endl;
     }
     if (!rtt_window.is_copa(rtt_acked, cur_time)) {
       if (operation_mode == DEFAULT_MODE)
@@ -199,23 +200,13 @@ void MarkovianCC::update_intersend_time() {
     update_amt = min(update_amt, (int)_the_window);
     ++ pkts_per_rtt;
 
-    if (last_update_time + rtt_ewma < cur_time) {
-      if (_the_window < target_window) {
-        ++ update_dir;
-        _the_window += update_amt / _the_window;
-      }
-      else {
-        -- update_dir;
-        _the_window -= update_amt / _the_window;
-      }
-    }    
+    if (_the_window < target_window) {
+      ++ update_dir;
+      _the_window += update_amt / (delta * _the_window);
+    }
     else {
-      if (_the_window < target_window) {
-        _the_window += 1 / (delta * _the_window);
-      }
-      else {
-        _the_window -= 1 / (delta * _the_window);
-      }
+      -- update_dir;
+      _the_window -= update_amt / (delta * _the_window);
     }
   }
 
@@ -223,7 +214,7 @@ void MarkovianCC::update_intersend_time() {
   _the_window = max(2.0, _the_window);
   cur_intersend_time = rtt_ewma / _the_window;
   _intersend_time = randomize_intersend(cur_intersend_time);
-  //cout << cur_time << " " << _the_window << " " << rtt_ewma << " " << min_rtt << endl;
+  cout << cur_time << " " << _the_window << " " << target_window << " " << rtt_ewma << " " << min_rtt << " " << update_amt << endl;
 }
 
 void MarkovianCC::onACK(int ack, 
@@ -279,8 +270,8 @@ void MarkovianCC::onACK(int ack,
     }
   }
   if (pkt_lost) {
-    //cout << "Seq Num Loss Detect " << rtt_acked << endl;
-    //update_delta(true);
+    cout << "Seq Num Loss Detect " << rtt_acked << endl;
+    update_delta(true);
   }
 
   ++ num_pkts_acked;
@@ -321,15 +312,15 @@ void MarkovianCC::onDupACK() {
   ///num_pkts_lost ++;
   // loss_rate = 1.0 * alpha_loss + loss_rate * (1.0 - alpha_loss);
   //cout << "Dupack " << rtt_acked << endl;
-  slow_start = false;
-  update_delta(true);
+  //slow_start = false;
+  //update_delta(true);
 }
 
 void MarkovianCC::onTimeout() {
   //num_pkts_lost ++;
   // loss_rate = 1.0 * alpha_loss + loss_rate * (1.0 - alpha_loss);
   //cout << "Timeout\n";
-  slow_start = false;
+  //slow_start = false;
   //update_delta(true);
 }
 
