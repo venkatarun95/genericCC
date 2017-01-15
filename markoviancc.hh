@@ -194,7 +194,14 @@ public:
 #endif
   
   void set_flow_length(int s_flow_length) {flow_length = s_flow_length;}
-  void set_min_rtt(double x) {external_min_rtt = x; init(); std::cout << "Set min. RTT to " << x << std::endl;}
+  void set_min_rtt(double x) {
+    if (external_min_rtt == 0)
+      external_min_rtt = x;
+    else
+      external_min_rtt = std::min(external_min_rtt, x);
+    init();
+    std::cout << "Set min. RTT to " << external_min_rtt << std::endl;
+  }
   int get_delta_class() const {return 0;}
   void set_delta_from_router(double x) {
     if (utility_mode == BOUNDED_DELAY) {

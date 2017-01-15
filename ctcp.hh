@@ -114,11 +114,14 @@ void CTCP<T>::tcp_handshake() {
   header.sender_timestamp = -1;
   header.receiver_timestamp = -1;
 
-  memcpy( buf, &header, sizeof(TCPHeader) );
-  socket.senddata( buf, packet_size, NULL );
 
   sockaddr_in other_addr;
+  double rtt;
+  chrono::high_resolution_clock::time_point start_time_point;
   while ( true ) {
+    start_time_point = chrono::high_resolution_clock::now();
+    memcpy( buf, &header, sizeof(TCPHeader) );
+    socket.senddata( buf, packet_size, NULL );
     if (socket.receivedata( buf, packet_size, 2000, other_addr ) == 0) {
       cerr << "Could not establish connection" << endl;
       continue;
@@ -128,8 +131,10 @@ void CTCP<T>::tcp_handshake() {
       continue;
     if (ack_header.sender_timestamp != -1 || ack_header.src_id != -1)
       continue;
+    rtt = current_timestamp( start_time_point );
     break;
   }
+  congctrl.set_min_rtt(rtt);
   cout << "Connection Established." << endl; 
 }
 
