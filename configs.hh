@@ -12,11 +12,11 @@
 //
 // Scaling is based on link rate of the bottleneck link measured using 
 // the 'packet-pair' trick. Rate is measured in packets/s
-#undef SCALE_SEND_RECEIVE_EWMA
-#define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT 1
+#define SCALE_SEND_RECEIVE_EWMA
+//#define NUM_PACKETS_PER_LINK_RATE_MEASUREMENT 1
 
 // The lower the value, the slower the exponential averaging
-#define LINK_RATE_MEASUREMENT_ALPHA (1.0/64.0)
+//#define LINK_RATE_MEASUREMENT_ALPHA (1.0/64.0)
 // Link rate for which the remy was trained on (in packets per second)
 extern double TRAINING_LINK_RATE; // declared in sender.cc
 

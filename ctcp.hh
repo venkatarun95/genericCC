@@ -198,7 +198,6 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       header.sender_timestamp = cur_time;
       header.receiver_timestamp = 0;
 
-      std::cout << "S " << cur_time << " " << seq_num << endl;
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
       if ((cur_time - _last_send_time) / (congctrl.get_intersend_time() * train_length) > 10 ||
@@ -208,9 +207,11 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       }
       else
         _last_send_time += congctrl.get_intersend_time();
-
-      congctrl.set_timestamp(cur_time);
-      congctrl.onPktSent( header.seq_num );
+      
+      if (seq_num % train_length == 0) {
+	congctrl.set_timestamp(cur_time);
+	congctrl.onPktSent( header.seq_num );
+      }
 
       seq_num++;
     }
@@ -241,14 +242,15 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
     // Estimate link rate
     if ((ack_header.seq_num - 1) % train_length != 0 && last_recv_time != 0.0) {
-      double alpha = 1 / 8.0;
+      double alpha = 1 / 16.0;
       if (link_rate_estimate == 0.0)
 	link_rate_estimate = 1 * (cur_time - last_recv_time);
       else
 	link_rate_estimate = (1 - alpha) * link_rate_estimate + alpha * (cur_time - last_recv_time);
-      congctrl.onLinkRateMeasurement(link_rate_estimate);
+      // Use estimate only after enough datapoints are available
+      if (ack_header.seq_num > 2 * train_length)
+	congctrl.onLinkRateMeasurement(1e3 / link_rate_estimate );
     }
-    //std::cout << link_rate_estimate << " " << cur_time - last_recv_time << " "  << cur_time << " " << (ack_header.seq_num - 1) % train_length << std::endl;
     last_recv_time = cur_time;
     
     // Track performance statistics
@@ -260,11 +262,13 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     
     num_packets_transmitted += 1;
     this->tot_packets_transmitted += 1;
-    
-    congctrl.set_timestamp(cur_time);
-    congctrl.onACK(ack_header.seq_num,
-                   ack_header.receiver_timestamp,
-                   ack_header.sender_timestamp);
+
+    if ((ack_header.seq_num - 1) % train_length == 0) {
+      congctrl.set_timestamp(cur_time);
+      congctrl.onACK(ack_header.seq_num,
+		     ack_header.receiver_timestamp,
+		     ack_header.sender_timestamp);
+    }
 #ifdef SCALE_SEND_RECEIVE_EWMA
     //assert(false);
 #endif
