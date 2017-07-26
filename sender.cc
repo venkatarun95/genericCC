@@ -5,8 +5,6 @@
 #include "remycc.hh"
 #include "ctcp.hh"
 #include "kernelTCP.hh"
-//#include "pcc-tcp.hh"
-//#include "nashcc.hh"
 #include "markoviancc.hh"
 #include "traffic-generator.hh"
 
@@ -24,8 +22,10 @@ int main( int argc, char *argv[] ) {
 	int serverport=8888;
 	int offduration=5000, onduration=5000;
 	string traffic_params = "";
-	string delta_conf = ""; // for MarkovianCC
-	//NashCC::UtilityMode nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
+	// for MarkovianCC
+	string delta_conf = "";
+	// length of packet train for estimating bottleneck bandwidth
+	int train_length = 1;
 
 	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC, MARKOVIANCC } cctype = REMYCC;
 
@@ -74,14 +74,10 @@ int main( int argc, char *argv[] ) {
 		}
 		else if( arg.substr( 0, 15 ) == "traffic_params=")
 			traffic_params = arg.substr( 15 );
-		else if (arg.substr( 0, 11) == "delta_conf=" )
+		else if (arg.substr( 0, 11) == "delta_conf=")
 			delta_conf = arg.substr( 11 );
-		//else if( arg == "constant_delta" )
-		//	nashcc_utility_mode = NashCC::UtilityMode::CONSTANT_DELTA;
-		//else if( arg == "max_delay" )
-		//	nashcc_utility_mode = NashCC::UtilityMode::MAX_DELAY;
-		//else if( arg == "min_fct" )
-		//	nashcc_utility_mode = NashCC::UtilityMode::MIN_FCT;
+		else if (arg.substr( 0, 13 ) == "train_length=")
+			train_length = atoi(arg.substr( 13 ).c_str());
 		else if( arg.substr( 0, 7 ) == "cctype=" ) {
 			std::string cctype_str = arg.substr( 7 );
 			if( cctype_str == "remy" )
@@ -117,14 +113,14 @@ int main( int argc, char *argv[] ) {
 	if( cctype == CCType::REMYCC) {
 		fprintf( stdout, "Using RemyCC.\n" );
 		RemyCC congctrl( whiskers );
-		CTCP< RemyCC > connection( congctrl, serverip, serverport );
+		CTCP< RemyCC > connection( congctrl, serverip, serverport, train_length );
 		TrafficGenerator<CTCP<RemyCC>> traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
 	else if( cctype == CCType::TCPCC ) {
 		fprintf( stdout, "Using UDT's TCP CC.\n" );
 		DefaultCC congctrl;
-		CTCP< DefaultCC > connection( congctrl, serverip, serverport );
+		CTCP< DefaultCC > connection( congctrl, serverip, serverport, train_length );
 		TrafficGenerator< CTCP< DefaultCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
@@ -143,33 +139,15 @@ int main( int argc, char *argv[] ) {
 		//traffic_generator.spawn_senders( 1 );
 	}
 	else if ( cctype == CCType::NASHCC ) {
-		/*double param = delta;
-		if (nashcc_utility_mode == NashCC::UtilityMode::MAX_DELAY) {
-			if (max_delay == -1.0) {
-				fprintf(stderr, "Please specify max_delay for this mode\n");
-				exit(1);
-			}
-			param = max_delay;
-			fprintf( stdout, "Using NashCC in MAX_DELAY mode.\n" );
-		}
-		else if (nashcc_utility_mode == NashCC::UtilityMode::MIN_FCT) {
-			fprintf(stdout, "Using NashhCC in MIN_FCT mode.\n");
-		}
-		else
-		fprintf( stdout, "Using NashCC in CONSTANT_DELTA mode.\n" ); */
 		fprintf ( stderr, "NashCC Deprecated. Use MarkovianCC.\n" );
 		assert( cctype != CCType::NASHCC );
-		//NashCC congctrl( nashcc_utility_mode, param );
-		//CTCP< NashCC > connection( congctrl, serverip, serverport );
-		//TrafficGenerator<CTCP<NashCC>> traffic_generator( connection, onduration, offduration, traffic_params );
-		//traffic_generator.spawn_senders( 1 );
 	}
 	else if ( cctype == CCType::MARKOVIANCC ){
 		fprintf( stdout, "Using MarkovianCC.\n");
 		MarkovianCC congctrl(1.0);
 		assert(delta_conf != "");
 		congctrl.interpret_config_str(delta_conf);
-		CTCP< MarkovianCC > connection( congctrl, serverip, serverport );
+		CTCP< MarkovianCC > connection( congctrl, serverip, serverport, train_length );
 		TrafficGenerator< CTCP< MarkovianCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
