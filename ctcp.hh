@@ -160,7 +160,6 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
   _last_send_time = 0.0;
   double cur_time = 0;
   int seq_num = 0;
-  _last_send_time = 0.0;
   _largest_ack = -1;
 
   // for estimating bottleneck link rate
@@ -177,6 +176,8 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
   chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
   cur_time = current_timestamp( start_time_point );
   _last_send_time = cur_time;
+  // For computing timeouts
+  double last_ack_time = cur_time;
 
   congctrl.set_timestamp(cur_time);
   congctrl.init();
@@ -187,6 +188,14 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
   while ((byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size) {
     cur_time = current_timestamp( start_time_point );
+    if (cur_time - last_ack_time > 1000) {
+      std::cerr << "Timeout" << std::endl;
+      congctrl.set_timestamp(cur_time);
+      congctrl.init();
+      _largest_ack = seq_num - 1;
+      _last_send_time = cur_time;
+      last_ack_time = cur_time; // So we don't timeout repeatedly
+    }
     // Warning: The number of unacknowledged packets may exceed the congestion window by num_packets_per_link_rate_measurement
     while (((seq_num < _largest_ack + 1 + congctrl.get_the_window()) &&
 	    (_last_send_time + congctrl.get_intersend_time() * train_length <= cur_time) &&
@@ -200,13 +209,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
-      if ((cur_time - _last_send_time) / (congctrl.get_intersend_time() * train_length) > 10 ||
-          seq_num >= _largest_ack + congctrl.get_the_window()) {
-        // Hopeless. Stop trying to compensate.
-        _last_send_time = cur_time;
-      }
-      else
-        _last_send_time += congctrl.get_intersend_time();
+      _last_send_time += congctrl.get_intersend_time();
       
       if (seq_num % train_length == 0) {
 	congctrl.set_timestamp(cur_time);
@@ -215,11 +218,16 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
       seq_num++;
     }
+    if (cur_time - _last_send_time >= congctrl.get_intersend_time() * train_length ||
+	seq_num >= _largest_ack + congctrl.get_the_window()) {
+      // Hopeless. Stop trying to compensate.
+      _last_send_time = cur_time;
+    }
 
     cur_time = current_timestamp( start_time_point );
     double timeout = _last_send_time + 1000; //congctrl.get_timeout(); // everything in milliseconds
     if(congctrl.get_the_window() > 0)
-      timeout = min( timeout, _last_send_time + congctrl.get_intersend_time()*train_length - cur_time );
+      timeout = min( 1000.0, _last_send_time + congctrl.get_intersend_time()*train_length - cur_time );
     
     sockaddr_in other_addr;
     if(socket.receivedata(buf, packet_size, timeout, other_addr) == 0) {
@@ -239,6 +247,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       continue;
     }
     cur_time = current_timestamp( start_time_point );
+    last_ack_time = cur_time;
 
     // Estimate link rate
     if ((ack_header.seq_num - 1) % train_length != 0 && last_recv_time != 0.0) {
