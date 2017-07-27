@@ -223,7 +223,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       
       if (seq_num % train_length == 0) {
 	congctrl.set_timestamp(cur_time);
-	congctrl.onPktSent( header.seq_num );
+	congctrl.onPktSent( header.seq_num / train_length );
       }
 
       seq_num++;
@@ -284,7 +284,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
     if ((ack_header.seq_num - 1) % train_length == 0) {
       congctrl.set_timestamp(cur_time);
-      congctrl.onACK(ack_header.seq_num,
+      congctrl.onACK(ack_header.seq_num / train_length,
 		     ack_header.receiver_timestamp,
 		     ack_header.sender_timestamp);
     }

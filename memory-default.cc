@@ -17,7 +17,6 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
     /*if ( _largest_ack + 1 < x.seq_num ){
       _lost_packets.push( x );
     }*/
-    _largest_ack = max( _largest_ack, x.seq_num );
     //_all_packets_in_rtt_window.push( x );
 
     const double rtt = x.tick_received - x.tick_sent;
@@ -28,14 +27,16 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
       _min_rtt = rtt;
       _rtt_estimate = rtt;
     } else {
-      
-      _rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
-      _rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
-      _slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
+      // Only update ewmas if we are guaranteed an accurate estimate
+      if ( x.seq_num - 1 == _largest_ack ) {
+	_rec_send_ewma = (1 - alpha) * _rec_send_ewma + alpha * (x.tick_sent - _last_tick_sent) * link_rate_normalizing_factor;
+	_rec_rec_ewma = (1 - alpha) * _rec_rec_ewma + alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
+	_slow_rec_rec_ewma = (1 - slow_alpha) * _slow_rec_rec_ewma + slow_alpha * (x.receiver_timestamp - _last_receiver_timestamp) * link_rate_normalizing_factor;
 
-      _last_tick_sent = x.tick_sent;
-      _last_tick_received = x.tick_received;
-      _last_receiver_timestamp = x.receiver_timestamp;
+	_last_tick_sent = x.tick_sent;
+	_last_tick_received = x.tick_received;
+	_last_receiver_timestamp = x.receiver_timestamp;
+      }
 
       _min_rtt = min( _min_rtt, rtt );
       _rtt_ratio = double( rtt ) / double( _min_rtt );
@@ -43,6 +44,7 @@ void Memory::packets_received( const vector< Packet > & packets, const unsigned 
 
       _rtt_estimate = (1 - alpha) * _rtt_estimate + alpha * rtt;
     }
+    _largest_ack = max( _largest_ack, x.seq_num );
   }
 
   // pop all older packets
