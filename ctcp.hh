@@ -119,10 +119,18 @@ void CTCP<T>::tcp_handshake() {
   sockaddr_in other_addr;
   double rtt;
   chrono::high_resolution_clock::time_point start_time_point;
+  start_time_point = chrono::high_resolution_clock::now();
+  double last_send_time = numeric_limits<double>::min();
+  bool multi_send = false;
   while ( true ) {
-    start_time_point = chrono::high_resolution_clock::now();
-    memcpy( buf, &header, sizeof(TCPHeader) );
-    socket.senddata( buf, packet_size, NULL );
+    double cur_time = current_timestamp(start_time_point);
+    if (last_send_time < cur_time - 2000) {
+      memcpy( buf, &header, sizeof(TCPHeader) );
+      socket.senddata( buf, packet_size, NULL );
+      if (last_send_time != numeric_limits<double>::min())
+	multi_send = true;
+      last_send_time = cur_time;
+    }
     if (socket.receivedata( buf, packet_size, 2000, other_addr ) == 0) {
       cerr << "Could not establish connection" << endl;
       continue;
@@ -132,10 +140,12 @@ void CTCP<T>::tcp_handshake() {
       continue;
     if (ack_header.sender_timestamp != -1 || ack_header.src_id != -1)
       continue;
-    rtt = current_timestamp( start_time_point );
+    rtt = current_timestamp(start_time_point) - last_send_time;
     break;
   }
-  congctrl.set_min_rtt(rtt);
+  // Set min_rtt only if we are sure we have the right rtt
+  if (!multi_send)
+    congctrl.set_min_rtt(rtt);
   cout << "Connection Established." << endl; 
 }
 
