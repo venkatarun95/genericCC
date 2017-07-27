@@ -21,7 +21,7 @@ private:
 	std::unordered_map<int, double> unacknowledged_packets;
 
 	int flow_id;
-
+	double cur_tick;
 	double current_timestamp();
 
 	double measured_link_rate;
@@ -35,9 +35,10 @@ public:
 	virtual void onPktSent(int seq_num) override ;
 	virtual void onTimeout() override { std::cerr << "Ack timed out!\n"; }
 	virtual void onLinkRateMeasurement( double s_measured_link_rate ) override;
+	void set_timestamp(double s_cur_tick) {cur_tick = s_cur_tick;}
 
 	RemyCC( WhiskerTree & s_tree ) 
-	: 	tree( s_tree ), rat( tree ), start_time_point(), unacknowledged_packets(), flow_id( 0 ), measured_link_rate( -1 ) 
+	  : 	tree( s_tree ), rat( tree ), start_time_point(), unacknowledged_packets(), flow_id( 0 ), cur_tick( 0 ), measured_link_rate( -1 ) 
 	{
 		_the_window = 2;
 		_intersend_time = 0;

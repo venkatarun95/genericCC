@@ -1,9 +1,7 @@
 #include "remycc.hh"
 
 double RemyCC::current_timestamp( void ){
-	using namespace std::chrono;
-	high_resolution_clock::time_point cur_time_point = high_resolution_clock::now();
-	return duration_cast<duration<double>>(cur_time_point - start_time_point).count()*1000; //convert to milliseconds, because that is the scale on which the rats have been trained
+	return cur_tick;
 }
 
 void RemyCC::init( void ){
