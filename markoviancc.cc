@@ -97,7 +97,7 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       if (operation_mode == LOSS_SENSITIVE_MODE)
         cout << "Switched to default mode." << endl;
       operation_mode = DEFAULT_MODE;
-      delta = 1;
+      delta = 0.5;
     }
   }
   
