@@ -106,6 +106,7 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
 template<class T>
 void CTCP<T>::tcp_handshake() {
   TCPHeader header, ack_header;
+  cout << data_size << endl;
 
   // this is the data that is transmitted. A sizeof(TCPHeader) header followed by a sring of dashes
   char buf[packet_size];
@@ -197,7 +198,10 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
   // Get min_rtt from outside
   const char* min_rtt_c = getenv("MIN_RTT");
-  congctrl.set_min_rtt(atof(min_rtt_c));
+  if (min_rtt_c == 0)
+    congctrl.set_min_rtt(1e9);
+  else
+    congctrl.set_min_rtt(atof(min_rtt_c));
 
   while ((byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size) {
     cur_time = current_timestamp( start_time_point );
