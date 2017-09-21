@@ -38,7 +38,7 @@ int main( int argc, char* argv[] ) {
 	LINK_LOGGING_FILENAME = argv[3];
 
 	UDPSocket socket;
-	socket.bindsocket( dstaddr, dstport );
+	socket.bindsocket( dstaddr, dstport, 0 );
 
 	const int src_id = 42; // some arbitrary number
 	const int packet_size = sizeof(TCPHeader)+2;

@@ -30,6 +30,7 @@ private:
 
   string dstaddr;
   int dstport;
+  int srcport;
 
   int train_length;
 
@@ -46,12 +47,13 @@ private:
 
 public:
 
-  CTCP( T s_congctrl, string ipaddr, int port, int train_length ) 
+  CTCP( T s_congctrl, string ipaddr, int port, int srcport, int train_length ) 
   :   congctrl( s_congctrl ), 
     socket(), 
     conntype( SENDER ),
     dstaddr( ipaddr ),
     dstport( port ),
+    srcport( srcport),
     train_length( train_length ),
     _last_send_time( 0.0 ),
     _largest_ack( -1 ),
@@ -60,7 +62,7 @@ public:
     tot_bytes_transmitted( 0 ),
     tot_packets_transmitted( 0 )
   {
-    socket.bindsocket( ipaddr, port );
+    socket.bindsocket( ipaddr, port, srcport );
   }
 
   CTCP( CTCP<T> &other )
@@ -69,6 +71,7 @@ public:
     conntype( other.conntype ),
     dstaddr( other.dstaddr ),
     dstport( other.dstport ),
+    srcport( other.srcport ),
     _last_send_time( 0.0 ),
     _largest_ack( -1 ),
     tot_time_transmitted( 0 ),
@@ -76,7 +79,7 @@ public:
     tot_bytes_transmitted( 0 ),
     tot_packets_transmitted( 0 )
   {
-    socket.bindsocket( dstaddr, dstport );
+    socket.bindsocket( dstaddr, dstport, srcport );
   }
 
   //duration in milliseconds
