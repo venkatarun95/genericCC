@@ -81,6 +81,7 @@ class MarkovianCC : public CCC {
   enum {DEFAULT_MODE, LOSS_SENSITIVE_MODE, TCP_MODE} operation_mode;
   bool do_slow_start;
   bool keep_ext_min_rtt;
+  double default_delta;
   int flow_length;
   double delay_bound;
   double prev_delta_update_time;
@@ -148,6 +149,7 @@ public:
       operation_mode(DEFAULT_MODE),
       do_slow_start(false),
       keep_ext_min_rtt(false),
+      default_delta(0.5),
       flow_length(),
       delay_bound(),
       prev_delta_update_time(),

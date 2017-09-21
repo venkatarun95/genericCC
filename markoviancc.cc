@@ -97,7 +97,7 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       if (operation_mode == LOSS_SENSITIVE_MODE)
         cout << "Switched to default mode." << endl;
       operation_mode = DEFAULT_MODE;
-      delta = 0.5;
+      delta = default_delta;
     }
   }
   
@@ -325,8 +325,14 @@ void MarkovianCC::interpret_config_str(string config) {
     config = config.substr(17, string::npos);
     cout << "Will keep external Min. RTT" << endl;
   }
-  
-  delta = 1.0; // If delta is not set in time, we don't want it to be 0
+  // if (config.substr(0, 14) == "default_delta:") {
+  //   keep_ext_min_rtt = true;
+  //   default_delta = atof(config.substr(14, string::npos).c_str());
+  //   default_delta = config.substr(14, string::npos);
+  //   cout << "Will use a default delta of " << default_delta << endl;
+  // }
+
+  delta = 1; // If delta is not set in time, we don't want it to be 0
   if (config.substr(0, 15) == "constant_delta:") {
     utility_mode = CONSTANT_DELTA;
     delta = atof(config.substr(15, string::npos).c_str());
@@ -374,9 +380,11 @@ void MarkovianCC::interpret_config_str(string config) {
     behavior = stof(config.substr(15, string::npos).c_str());
     cout << "Exhibiting constant behavior " << behavior << endl;
   }
-  else if (config.substr(0, 14) == "auto") {
+  else if (config.substr(0, 5) == "auto:") {
     utility_mode = AUTO_MODE;
-    cout << "Using Automatic Mode" << endl;
+    default_delta = atof(config.substr(5, string::npos).c_str());
+    delta = default_delta;
+    cout << "Using Automatic Mode with default delta = " << default_delta << endl;
   }
   else {
     utility_mode = CONSTANT_DELTA;
