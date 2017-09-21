@@ -3,18 +3,21 @@ import random
 import socket
 import subprocess
 import sys
+import time
 import traceback
+
+import analyze_pcap
 
 std_ports = {
     "ctrl": 6000,
     "udp_punch": 6001
 }
 MAX_CTRL_MSG_SIZE = 1024 * 1024
-run_time=5
+run_time=30
 res_dir="results"
 
 server_config = {
-    "available_cong_algs": ["copa"] #["cubic", "bbr"] #"copa", "copa-tpt"
+    "available_cong_algs": ["copa", "cubic", "bbr"]
 }
 
 cong_algs = {
@@ -40,6 +43,8 @@ while True:
             print("Got", request_str)
             request = json.loads(request_str)
             if request["request"] == "get_config":
+                config = server_config
+                config["conn_id"] = conn_id
                 ctrl_conn.sendall(json.dumps(server_config))
 
             elif request["request"] == "test_cong_alg":
@@ -59,6 +64,7 @@ while True:
                     subprocess.call(['sudo', 'pkill', 'tcpdump'])
                     subprocess.call(['sudo', 'pkill', 'tcpdump'])
                 elif request["cong_alg"] in ["copa"]:
+                    subprocess.call(["sudo", "sysctl", "-w", "net.core.default_qdisc=pfifo_fast"])
                     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     udp_sock.bind(("", std_ports["udp_punch"]))
@@ -69,6 +75,10 @@ while True:
                     print("UDP punched %s" % str(addr))
                     udp_sock.sendto("Sesame", addr)
                     udp_sock.close()
+
+                    time.sleep(5) # Give the client time to set things up
+                    subprocess.Popen(('sudo tcpdump -i eth0 -w %s/%s-%s-%s' % (res_dir, ctrl_client_addr[0], conn_id, request["cong_alg"])).split(' '))
+
                     subprocess.call(["./sender",
                                      "serverip="+addr[0],
                                      "serverport="+str(addr[1]),
@@ -78,6 +88,9 @@ while True:
                                      "delta_conf=auto",
                                      "offduration=0",
                                      "traffic_params=deterministic,num_cycles=1"])
+                    print("Copa done")
+                    subprocess.call(['sudo', 'pkill', 'tcpdump'])
+                    subprocess.call(['sudo', 'pkill', 'tcpdump'])
                 else:
                     print("Request for unrecognized algorithm '%s'" % request["cong_alg"])
 
@@ -85,6 +98,9 @@ while True:
                 print("Closing connection with client '%s'" % str(ctrl_client_addr))
                 ctrl_conn.close()
                 break
+
+            results = analyze_pcap.parse_file('%s/%s-%s-%s' % (res_dir, ctrl_client_addr[0], conn_id, request["cong_alg"]))
+            print(ctrl_client_addr[0], conn_id, request["cong_alg"], results)
     except Exception:
         print("Error while communicating with client.")
         print(traceback.format_exc())

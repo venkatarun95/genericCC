@@ -17,6 +17,7 @@ ctrl_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ctrl_sock.connect((server_ip, std_ports["ctrl"]))
 ctrl_sock.sendall('{"request": "get_config"}')
 server_configs = json.loads(ctrl_sock.recv(MAX_CTRL_MSG_SIZE))
+print("Connection id assigned by server: %s" % server_configs["conn_id"])
 
 for congalg in server_configs["available_cong_algs"]:
     print("Testing '%s'" % congalg)
