@@ -6,7 +6,6 @@
 
 #include <boost/random/uniform_int_distribution.hpp>
 
-#include "ctcp.hh"
 #include "exponential.hh"
 #include "random.hh"
 #include "remycc.hh"

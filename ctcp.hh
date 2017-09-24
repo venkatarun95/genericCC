@@ -129,7 +129,8 @@ void CTCP<T>::tcp_handshake() {
     double cur_time = current_timestamp(start_time_point);
     if (last_send_time < cur_time - 2000) {
       memcpy( buf, &header, sizeof(TCPHeader) );
-      socket.senddata( buf, packet_size, NULL );
+      socket.senddata( buf, sizeof(TCPHeader) * 2, NULL );
+
       if (last_send_time != -1e9)
         multi_send = true;
       last_send_time = cur_time;
@@ -205,8 +206,9 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
   while ((byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size) {
     cur_time = current_timestamp( start_time_point );
-    if (cur_time - last_ack_time > 1000) {
+    if (cur_time - last_ack_time > 2000) {
       std::cerr << "Timeout" << std::endl;
+      if ((byte_switched?(num_packets_transmitted*data_size):cur_time) >= flow_size) break;
       congctrl.set_timestamp(cur_time);
       congctrl.init();
       _largest_ack = seq_num - 1;
