@@ -29,7 +29,7 @@ class MarkovianCC : public CCC {
   static constexpr double alpha_loss = 1.0 / 2.0;
   static constexpr double alpha_rtt_long_avg = 1.0 / 4.0;
   static constexpr double rtt_averaging_interval = 0.1;
-  static constexpr int num_probe_pkts = 5;
+  static constexpr int num_probe_pkts = 10;
   static constexpr double copa_k = 2;
   
   struct PacketData {

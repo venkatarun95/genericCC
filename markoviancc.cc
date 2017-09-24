@@ -25,13 +25,13 @@ void MarkovianCC::init() {
   }
 
   _intersend_time = 0;
+  _the_window = num_probe_pkts;
   if (external_min_rtt != 0)
     _intersend_time = external_min_rtt / _the_window;
   if (keep_ext_min_rtt)
     min_rtt = external_min_rtt;
   else
     min_rtt = numeric_limits<double>::max();
-  _the_window = num_probe_pkts;
   _timeout = 1000;
   
   if (utility_mode != CONSTANT_DELTA)
