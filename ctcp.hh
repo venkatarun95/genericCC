@@ -48,36 +48,36 @@ private:
 public:
 
   CTCP( T s_congctrl, string ipaddr, int port, int srcport, int train_length ) 
-  :   congctrl( s_congctrl ), 
-    socket(), 
-    conntype( SENDER ),
-    dstaddr( ipaddr ),
-    dstport( port ),
-    srcport( srcport),
-    train_length( train_length ),
-    _last_send_time( 0.0 ),
-    _largest_ack( -1 ),
-    tot_time_transmitted( 0 ),
-    tot_delay( 0 ),
-    tot_bytes_transmitted( 0 ),
-    tot_packets_transmitted( 0 )
+    :   congctrl( s_congctrl ), 
+        socket(), 
+        conntype( SENDER ),
+        dstaddr( ipaddr ),
+        dstport( port ),
+        srcport( srcport),
+        train_length( train_length ),
+        _last_send_time( 0.0 ),
+        _largest_ack( -1 ),
+        tot_time_transmitted( 0 ),
+        tot_delay( 0 ),
+        tot_bytes_transmitted( 0 ),
+        tot_packets_transmitted( 0 )
   {
     socket.bindsocket( ipaddr, port, srcport );
   }
 
   CTCP( CTCP<T> &other )
-  : congctrl( other.congctrl ),
-    socket(),
-    conntype( other.conntype ),
-    dstaddr( other.dstaddr ),
-    dstport( other.dstport ),
-    srcport( other.srcport ),
-    _last_send_time( 0.0 ),
-    _largest_ack( -1 ),
-    tot_time_transmitted( 0 ),
-    tot_delay( 0 ),
-    tot_bytes_transmitted( 0 ),
-    tot_packets_transmitted( 0 )
+    : congctrl( other.congctrl ),
+      socket(),
+      conntype( other.conntype ),
+      dstaddr( other.dstaddr ),
+      dstport( other.dstport ),
+      srcport( other.srcport ),
+      _last_send_time( 0.0 ),
+      _largest_ack( -1 ),
+      tot_time_transmitted( 0 ),
+      tot_delay( 0 ),
+      tot_bytes_transmitted( 0 ),
+      tot_packets_transmitted( 0 )
   {
     socket.bindsocket( dstaddr, dstport, srcport );
   }
@@ -215,9 +215,9 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     }
     // Warning: The number of unacknowledged packets may exceed the congestion window by num_packets_per_link_rate_measurement
     while (((seq_num < _largest_ack + 1 + congctrl.get_the_window()) &&
-	    (_last_send_time + congctrl.get_intersend_time() * train_length <= cur_time) &&
-	    (byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size ) ||
-	   (seq_num % train_length != 0)) {
+            (_last_send_time + congctrl.get_intersend_time() * train_length <= cur_time) &&
+            (byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size ) ||
+           (seq_num % train_length != 0)) {
       header.seq_num = seq_num;
       header.flow_id = flow_id;
       header.src_id = src_id;
@@ -227,16 +227,16 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
       _last_send_time += congctrl.get_intersend_time();
-      
+
       if (seq_num % train_length == 0) {
-	congctrl.set_timestamp(cur_time);
-	congctrl.onPktSent( header.seq_num / train_length );
+        congctrl.set_timestamp(cur_time);
+        congctrl.onPktSent( header.seq_num / train_length );
       }
 
       seq_num++;
     }
     if (cur_time - _last_send_time >= congctrl.get_intersend_time() * train_length ||
-	seq_num >= _largest_ack + congctrl.get_the_window()) {
+        seq_num >= _largest_ack + congctrl.get_the_window()) {
       // Hopeless. Stop trying to compensate.
       _last_send_time = cur_time;
     }
@@ -245,7 +245,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     double timeout = _last_send_time + 1000; //congctrl.get_timeout(); // everything in milliseconds
     if(congctrl.get_the_window() > 0)
       timeout = min( 1000.0, _last_send_time + congctrl.get_intersend_time()*train_length - cur_time );
-    
+
     sockaddr_in other_addr;
     if(socket.receivedata(buf, packet_size, timeout, other_addr) == 0) {
       cur_time = current_timestamp(start_time_point);
@@ -253,10 +253,10 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
         congctrl.onTimeout();
       continue;
     }
-    
+
     memcpy(&ack_header, buf, sizeof(TCPHeader));
     ack_header.seq_num++; // because the receiver doesn't do that for us yet
-    
+
     if (ack_header.src_id != src_id || ack_header.flow_id != flow_id){
       if(ack_header.src_id != src_id ){
         std::cerr<<"Received incorrect ack for src "<<ack_header.src_id<<" to "<<src_id<<" for flow "<<ack_header.flow_id<<" to "<<flow_id<<endl;
@@ -270,54 +270,54 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     if ((ack_header.seq_num - 1) % train_length != 0 && last_recv_time != 0.0) {
       double alpha = 1 / 16.0;
       if (link_rate_estimate == 0.0)
-	link_rate_estimate = 1 * (cur_time - last_recv_time);
+        link_rate_estimate = 1 * (cur_time - last_recv_time);
       else
-	link_rate_estimate = (1 - alpha) * link_rate_estimate + alpha * (cur_time - last_recv_time);
+        link_rate_estimate = (1 - alpha) * link_rate_estimate + alpha * (cur_time - last_recv_time);
       // Use estimate only after enough datapoints are available
       if (ack_header.seq_num > 2 * train_length)
-	congctrl.onLinkRateMeasurement(1e3 / link_rate_estimate );
+        congctrl.onLinkRateMeasurement(1e3 / link_rate_estimate );
     }
     last_recv_time = cur_time;
-    
+
     // Track performance statistics
     delay_sum += cur_time - ack_header.sender_timestamp;
     this->tot_delay += cur_time - ack_header.sender_timestamp;
-    
+
     transmitted_bytes += data_size;
     this->tot_bytes_transmitted += data_size;
-    
+
     num_packets_transmitted += 1;
     this->tot_packets_transmitted += 1;
 
     if ((ack_header.seq_num - 1) % train_length == 0) {
       congctrl.set_timestamp(cur_time);
       congctrl.onACK(ack_header.seq_num / train_length,
-		     ack_header.receiver_timestamp,
-		     ack_header.sender_timestamp);
+                     ack_header.receiver_timestamp,
+                     ack_header.sender_timestamp);
     }
 #ifdef SCALE_SEND_RECEIVE_EWMA
     //assert(false);
 #endif
-    
+
     _largest_ack = max(_largest_ack, ack_header.seq_num);
   }
-  
+
   cur_time = current_timestamp( start_time_point );
-  
+
   congctrl.set_timestamp(cur_time);
   congctrl.close();
-  
+
   this->tot_time_transmitted += cur_time;
-  
+
   double throughput = transmitted_bytes/( cur_time / 1000.0 );
   double delay = (delay_sum / 1000) / num_packets_transmitted;
-  
+
   std::cout<<"\n\nData Successfully Transmitted\n\tThroughput: "<<throughput<<" bytes/sec\n\tAverage Delay: "<<delay<<" sec/packet\n\tCompletion time: " << cur_time / 1000.0 << "sec\n";
-  
+
   double avg_throughput = tot_bytes_transmitted / ( tot_time_transmitted / 1000.0);
   double avg_delay = (tot_delay / 1000) / tot_packets_transmitted;
   std::cout<<"\n\tAvg. Throughput: "<<avg_throughput<<" bytes/sec\n\tAverage Delay: "<<avg_delay<<" sec/packet\n";
-  
+
   if( LINK_LOGGING )
     link_logfile.close();
 }

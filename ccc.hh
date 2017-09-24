@@ -34,9 +34,9 @@ public:
   double get_the_window(){ return _the_window; }
   double get_intersend_time(){ return _intersend_time; }
   double get_timeout(){ return _timeout; }
-
-	void set_timestamp(double) {}
-	void set_min_rtt(double) {}
+  
+  void set_timestamp(double) {}
+  void set_min_rtt(double) {}
 
 protected:
   void setRTO(const int& usRTO){ _timeout = usRTO/1000.0;}
