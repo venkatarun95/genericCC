@@ -106,7 +106,6 @@ double current_timestamp( chrono::high_resolution_clock::time_point &start_time_
 template<class T>
 void CTCP<T>::tcp_handshake() {
   TCPHeader header, ack_header;
-  cout << data_size << endl;
 
   // this is the data that is transmitted. A sizeof(TCPHeader) header followed by a sring of dashes
   char buf[packet_size];
@@ -124,15 +123,15 @@ void CTCP<T>::tcp_handshake() {
   double rtt;
   chrono::high_resolution_clock::time_point start_time_point;
   start_time_point = chrono::high_resolution_clock::now();
-  double last_send_time = numeric_limits<double>::min();
+  double last_send_time = -1e9;
   bool multi_send = false;
   while ( true ) {
     double cur_time = current_timestamp(start_time_point);
     if (last_send_time < cur_time - 2000) {
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
-      if (last_send_time != numeric_limits<double>::min())
-	multi_send = true;
+      if (last_send_time != -1e9)
+        multi_send = true;
       last_send_time = cur_time;
     }
     if (socket.receivedata( buf, packet_size, 2000, other_addr ) == 0) {
@@ -156,7 +155,6 @@ void CTCP<T>::tcp_handshake() {
 // takes flow_size in milliseconds (byte_switched=false) or in bytes (byte_switched=true) 
 template<class T>
 void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int src_id ){
-  tcp_handshake();
 
   TCPHeader header, ack_header;
 
@@ -187,21 +185,23 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
 
   cout << "Assuming training link rate of: " << TRAINING_LINK_RATE << " pkts/sec" << endl;
 
-  chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
-  cur_time = current_timestamp( start_time_point );
-  _last_send_time = cur_time;
-  // For computing timeouts
-  double last_ack_time = cur_time;
-
-  congctrl.set_timestamp(cur_time);
-  congctrl.init();
-
   // Get min_rtt from outside
   const char* min_rtt_c = getenv("MIN_RTT");
   if (min_rtt_c == 0)
     congctrl.set_min_rtt(1e9);
   else
     congctrl.set_min_rtt(atof(min_rtt_c));
+
+  chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
+  cur_time = current_timestamp( start_time_point );
+  _last_send_time = cur_time;
+  // For computing timeouts
+  double last_ack_time = cur_time;
+  tcp_handshake();
+
+  cur_time = current_timestamp( start_time_point );
+  congctrl.set_timestamp(cur_time);
+  congctrl.init();
 
   while ((byte_switched?(num_packets_transmitted*data_size):cur_time) < flow_size) {
     cur_time = current_timestamp( start_time_point );
@@ -312,7 +312,7 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
   double throughput = transmitted_bytes/( cur_time / 1000.0 );
   double delay = (delay_sum / 1000) / num_packets_transmitted;
   
-  std::cout<<"\n\nData Successfully Transmitted\n\tThroughput: "<<throughput<<" bytes/sec\n\tAverage Delay: "<<delay<<" sec/packet\n";
+  std::cout<<"\n\nData Successfully Transmitted\n\tThroughput: "<<throughput<<" bytes/sec\n\tAverage Delay: "<<delay<<" sec/packet\n\tCompletion time: " << cur_time / 1000.0 << "sec\n";
   
   double avg_throughput = tot_bytes_transmitted / ( tot_time_transmitted / 1000.0);
   double avg_delay = (tot_delay / 1000) / tot_packets_transmitted;
