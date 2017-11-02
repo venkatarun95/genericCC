@@ -197,6 +197,7 @@ public:
     std::cout << "Set min. RTT to " << external_min_rtt << std::endl;
   }
   int get_delta_class() const {return 0;}
+  double get_the_window() {return 2 * _the_window;}
   void set_delta_from_router(double x) {
     if (utility_mode == BOUNDED_DELAY) {
       if (delta != x)
