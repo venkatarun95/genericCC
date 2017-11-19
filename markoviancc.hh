@@ -29,7 +29,7 @@ class MarkovianCC : public CCC {
   static constexpr double alpha_loss = 1.0 / 2.0;
   static constexpr double alpha_rtt_long_avg = 1.0 / 4.0;
   static constexpr double rtt_averaging_interval = 0.1;
-  static constexpr int num_probe_pkts = 5;
+  static constexpr int num_probe_pkts = 10;
   static constexpr double copa_k = 2;
   
   struct PacketData {
@@ -81,6 +81,7 @@ class MarkovianCC : public CCC {
   enum {DEFAULT_MODE, LOSS_SENSITIVE_MODE, TCP_MODE} operation_mode;
   bool do_slow_start;
   bool keep_ext_min_rtt;
+  double default_delta;
   int flow_length;
   double delay_bound;
   double prev_delta_update_time;
@@ -148,6 +149,7 @@ public:
       operation_mode(DEFAULT_MODE),
       do_slow_start(false),
       keep_ext_min_rtt(false),
+      default_delta(0.5),
       flow_length(),
       delay_bound(),
       prev_delta_update_time(),
@@ -195,6 +197,7 @@ public:
     std::cout << "Set min. RTT to " << external_min_rtt << std::endl;
   }
   int get_delta_class() const {return 0;}
+  double get_the_window() {return 2 * _the_window;}
   void set_delta_from_router(double x) {
     if (utility_mode == BOUNDED_DELAY) {
       if (delta != x)

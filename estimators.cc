@@ -27,6 +27,8 @@ void TimeEwma::update(double value, double timestamp) {
 	double ewma_factor = pow(alpha, timestamp - last_update_timestamp);
 	double new_denom = 1.0 + ewma_factor * denominator;
 	double new_ewma = (value + ewma_factor * ewma * denominator) / new_denom;
+  if (!((value < ewma && new_ewma < ewma) || (value >= ewma && new_ewma >= ewma)))
+    return; // Happens due to floating point error sometimes for small 'value'. Ignore
 	assert((value < ewma && new_ewma < ewma) || (value >= ewma && new_ewma >= ewma));
 	ewma = new_ewma;
 	denominator = new_denom;

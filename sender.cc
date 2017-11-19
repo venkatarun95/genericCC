@@ -20,6 +20,7 @@ int main( int argc, char *argv[] ) {
 
 	string serverip = "";
 	int serverport=8888;
+  int sourceport=0;
 	int offduration=5000, onduration=5000;
 	string traffic_params = "";
 	// for MarkovianCC
@@ -62,6 +63,8 @@ int main( int argc, char *argv[] ) {
 			serverip = arg.substr( 9 );
 		else if( arg.substr( 0, 11 ) == "serverport=" )
 			serverport = atoi( arg.substr( 11 ).c_str() );
+		else if( arg.substr( 0, 11 ) == "sourceport=" )
+			sourceport = atoi( arg.substr( 11 ).c_str() );
 		else if( arg.substr( 0, 12 ) == "offduration=" )
 			offduration	= atoi( arg.substr( 12 ).c_str() );
 		else if( arg.substr( 0, 11 ) == "onduration=" )
@@ -113,14 +116,14 @@ int main( int argc, char *argv[] ) {
 	if( cctype == CCType::REMYCC) {
 		fprintf( stdout, "Using RemyCC.\n" );
 		RemyCC congctrl( whiskers );
-		CTCP< RemyCC > connection( congctrl, serverip, serverport, train_length );
+		CTCP< RemyCC > connection( congctrl, serverip, serverport, sourceport, train_length );
 		TrafficGenerator<CTCP<RemyCC>> traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
 	else if( cctype == CCType::TCPCC ) {
 		fprintf( stdout, "Using UDT's TCP CC.\n" );
 		DefaultCC congctrl;
-		CTCP< DefaultCC > connection( congctrl, serverip, serverport, train_length );
+		CTCP< DefaultCC > connection( congctrl, serverip, serverport, sourceport, train_length );
 		TrafficGenerator< CTCP< DefaultCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
@@ -147,7 +150,7 @@ int main( int argc, char *argv[] ) {
 		MarkovianCC congctrl(1.0);
 		assert(delta_conf != "");
 		congctrl.interpret_config_str(delta_conf);
-		CTCP< MarkovianCC > connection( congctrl, serverip, serverport, train_length );
+		CTCP< MarkovianCC > connection( congctrl, serverip, serverport, sourceport, train_length );
 		TrafficGenerator< CTCP< MarkovianCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
