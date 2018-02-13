@@ -81,7 +81,7 @@ void RTTWindow::new_rtt_sample(double rtt, double now) {
   srtt = srtt_alpha * rtt + (1. - srtt_alpha) * srtt;
 
   // Update extreme value trackers
-  min_rtt.update_max_time(min(10e3, srtt * 20));
+  min_rtt.update_max_time(10e3);
   unjittered_rtt.update_max_time(min(10e3, srtt * 0.5));
   is_copa_min.update_max_time(min(10e3, srtt * 6));
   is_copa_max.update_max_time(min(10e3, srtt * 6));

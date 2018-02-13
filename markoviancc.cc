@@ -76,7 +76,7 @@ void MarkovianCC::init() {
   slow_start_threshold = 1e10;
 }
 
-void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_rtt __attribute((unused))) {
+void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_rtt) {
   double cur_time = current_timestamp();
   if (utility_mode == AUTO_MODE) {
     if (pkt_lost) {
@@ -92,31 +92,32 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       if (operation_mode == LOSS_SENSITIVE_MODE)
         cout << "Switched to default mode." << endl;
       operation_mode = DEFAULT_MODE;
-      delta = default_delta;
     }
   }
-  
-  if (utility_mode == TCP_COOP || operation_mode == LOSS_SENSITIVE_MODE) {
+
+  if (operation_mode == DEFAULT_MODE) {
+    if (prev_delta_update_time == 0. || prev_delta_update_time_loss + cur_rtt < cur_time) {
+      if (delta < default_delta)
+        delta = 1. / (1. / delta - 1.);
+      delta = min(delta, default_delta);
+      prev_delta_update_time = cur_time;
+    }
+  }
+  else if (utility_mode == TCP_COOP || operation_mode == LOSS_SENSITIVE_MODE) {
     if (prev_delta_update_time == 0)
-      delta = 1;
-    if (pkt_lost && cur_intersend_time != 0 && prev_delta_update_time_loss + cur_rtt < cur_time) {
-      //cout << delta << " " << cur_intersend_time << endl;
-      double median_rtt = 1 / (delta * cur_intersend_time);
-      if (true || cur_rtt > median_rtt) // congestive loss
-        delta *= 2;
-      else
-        delta /= 2;
+      delta = default_delta;
+    if (pkt_lost && prev_delta_update_time_loss + cur_rtt < cur_time) {
+      delta *= 2;
       prev_delta_update_time_loss = cur_time;
     }
     else {
       if (prev_delta_update_time + cur_rtt < cur_time) {
-	delta = 1 / (1 + 1 / delta);
-	prev_delta_update_time = cur_time;
+        delta = 1. / (1. / delta + 1.);
+        cout << "DU " << cur_time << " " << flow_id << " " << delta << endl;
+        prev_delta_update_time = cur_time;
       }
     }
-    //cout << "DU " << cur_time << " " << flow_id << " " << delta << endl;
-    //delta = min(delta, 1.0);
-    //delta = max(delta, 0.1);
+    delta = min(delta, default_delta);
   }
 }
 
@@ -191,7 +192,7 @@ void MarkovianCC::update_intersend_time() {
     }
   }
 
-  cout << "window=" << _the_window << ", rtt=" << rtt << ", delta=" << delta << endl;
+  cout << "window=" << _the_window << ", rtt=" << rtt << ", min_rtt=" << min_rtt << ", delta=" << delta << endl;
   // Set intersend time and perform boundary checks.
   _the_window = max(2.0, _the_window);
   cur_intersend_time = 0.5 * rtt / _the_window;
@@ -243,6 +244,7 @@ void MarkovianCC::onACK(int ack,
   }
   if (pkt_lost) {
     update_delta(true);
+    cout << "LOST! --------------------" << endl;
   }
 
   ++ num_pkts_acked;
