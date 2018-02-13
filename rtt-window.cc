@@ -5,104 +5,102 @@
 
 using namespace std;
 
-// Find extreme value in window
-class ExtremeWindow {
-  // Whether to find minimum or maximum
-  bool find_min;
-  // The maximum time till which to maintain window
-  double max_time;
-  // Format: (timestamp, val)
-  deque<pair<double, double>> vals;
-
-  void clear_old_hist(double now);
- public:
-  ExtremeWindow(double max_time);
-  void update_max_time(double t);
-  void new_sample(double val, double timestamp);
-  // Return the maintained extreme value
-  operator double() const;
-
-};
-
-RTTWindow::RTTWindow()
-  : max_time(10e3),
-    min_rtt(numeric_limits<double>::max()),
-    //unjittered_rtt(numeric_limits<double>::max()),
-    srtt(0.),
-    srtt_alpha(1. / 16.),
-    rtts()
+ExtremeWindow::ExtremeWindow(bool find_min)
+  : find_min(find_min),
+    max_time(10e3),
+    vals(),
+    extreme(find_min?numeric_limits<double>::max():
+            numeric_limits<double>::min())
 {}
 
-void RTTWindow::clear_old_hist(double now) {
+void ExtremeWindow::clear() {
+  max_time = 10e3;
+  vals.clear();
+  extreme = find_min?numeric_limits<double>::max():
+    numeric_limits<double>::min();
+}
+
+void ExtremeWindow::clear_old_hist(double now) {
   // Whether or not min. RTT needs to be recomputed
-  bool recompute_min_rtt = false;
+  bool recompute = false;
 
   // Delete all samples older than max_time. However, if there is only one
   // sample left, don't delete it
-  while(rtts.size() > 1 && rtts.front().first < now - max_time) {
-    if (rtts.front().second <= min_rtt)
-      recompute_min_rtt = true;
-    rtts.pop_front();
+  while(vals.size() > 1 && vals.front().first < now - max_time) {
+    if ((find_min && vals.front().second <= extreme) ||
+        (!find_min && vals.front().second >= extreme))
+      recompute = true;
+    vals.pop_front();
   }
 
   // Recompute min RTT if necessary
-  if (recompute_min_rtt) {
+  if (recompute) {
     // Since `rtts` is a monotonically increasing array, the value at the front
     // contains the minimum
-    min_rtt = rtts.front().second;
+    extreme = vals.front().second;
   }
 }
 
-void RTTWindow::new_rtt_sample(double rtt, double now) {
-  // Delete any RTT samples immediately before this one that are greater than
-  // the current value
-  while (!rtts.empty() && rtts.back().second > rtt)
-    rtts.pop_back();
+void ExtremeWindow::new_sample(double val, double now) {
+  // Delete any RTT samples immediately before this one that are greater (or
+  // less than if finding max) than the current value
+  while (!vals.empty() && ((find_min && vals.back().second > val) ||
+                           (!find_min && vals.back().second < val)))
+    vals.pop_back();
 
-  // Push back current sample and update min. RTT
-  rtts.push_back(make_pair(now, rtt));
-  if (rtt < min_rtt)
-    min_rtt = rtt;
-
-  // Update smoothed RTT
-  srtt = srtt_alpha * rtt + (1. - srtt_alpha) * srtt;
+  // Push back current sample and update extreme
+  vals.push_back(make_pair(now, val));
+  if ((find_min && val < extreme) || (!find_min && val > extreme))
+    extreme = val;
 
   // Delete unnecessary history
   clear_old_hist(now);
+}
 
-  max_time = min(10e3, 20 * srtt);
+RTTWindow::RTTWindow()
+  : srtt(0.),
+    srtt_alpha(1. / 16.),
+    min_rtt(true),
+    unjittered_rtt(true),
+    is_copa_min(true),
+    is_copa_max(false)
+{}
+
+void RTTWindow::clear() {
+  srtt = 0.;
+  min_rtt.clear();
+  unjittered_rtt.clear();
+  is_copa_min.clear();
+  is_copa_max.clear();
+}
+
+void RTTWindow::new_rtt_sample(double rtt, double now) {
+  // Update smoothed RTT
+  if (srtt == 0.)
+    srtt = rtt;
+  srtt = srtt_alpha * rtt + (1. - srtt_alpha) * srtt;
+
+  // Update extreme value trackers
+  min_rtt.update_max_time(min(10e3, srtt * 20));
+  unjittered_rtt.update_max_time(min(10e3, srtt * 0.5));
+  is_copa_min.update_max_time(min(10e3, srtt * 6));
+  is_copa_max.update_max_time(min(10e3, srtt * 6));
+
+  min_rtt.new_sample(rtt, now);
+  unjittered_rtt.new_sample(rtt, now);
+  is_copa_min.new_sample(rtt, now);
+  is_copa_max.new_sample(rtt, now);
 }
 
 double RTTWindow::get_min_rtt() const {
   return min_rtt;
 }
 
-double RTTWindow::get_unjittered_rtt(double now) const {
-  // TODO(venkat): make more efficient by maintaining a pointer to the
-  // appropriate element
-  double res = numeric_limits<double>::max();
-  for (auto it = rtts.rbegin(); it != rtts.rend(); ++it) {
-    res = min(res, (*it).second);
-    if ((*it).first < now - srtt * 0.5)
-      break;
-  }
-  assert(res != numeric_limits<double>::max());
-  return res;
+double RTTWindow::get_unjittered_rtt() const {
+  return unjittered_rtt;
 }
 
-bool RTTWindow::is_copa(double now) const {
-  const double num_rtts = 6.;
-  // TODO(venkat): make more efficient by maintaining a pointer to the
-  // appropriate element
-  double min = numeric_limits<double>::max();
-  double max = -1.;
-  for (auto it = rtts.rbegin(); it != rtts.rend(); ++it) {
-    res = min(res, (*it).second);
-    if ((*it).first < now - srtt * num_rtts)
-      break;
-  }
-  assert(min != numeric_limits<double>::max());
-  assert(max != -1.);
-  double threshold = get_min_rtt() + 0.1 * (max - get_min_rtt());
-  return min < threshold;
+bool RTTWindow::is_copa() const {
+  double threshold = min_rtt + 0.1 * (is_copa_max - min_rtt);
+  return is_copa_min < threshold;
 }
