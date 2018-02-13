@@ -113,7 +113,7 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
     else {
       if (prev_delta_update_time + cur_rtt < cur_time) {
         delta = 1. / (1. / delta + 1.);
-        cout << "DU " << cur_time << " " << flow_id << " " << delta << endl;
+        //cout << "DU " << cur_time << " " << flow_id << " " << delta << endl;
         prev_delta_update_time = cur_time;
       }
     }
@@ -130,10 +130,10 @@ double MarkovianCC::randomize_intersend(double intersend) {
 
 void MarkovianCC::update_intersend_time() {
   double cur_time __attribute((unused)) = current_timestamp();
-  if (external_min_rtt == 0) {
-    cout << "External min. RTT estimate required." << endl;
-    exit(1);
-  }
+  // if (external_min_rtt == 0) {
+  //   cout << "External min. RTT estimate required." << endl;
+  //   exit(1);
+  // }
   
   // First two RTTs are for probing
   if (num_pkts_acked < 2 * num_probe_pkts - 1)
@@ -192,7 +192,7 @@ void MarkovianCC::update_intersend_time() {
     }
   }
 
-  cout << "window=" << _the_window << ", rtt=" << rtt << ", min_rtt=" << min_rtt << ", delta=" << delta << endl;
+  //cout << "window=" << _the_window << ", rtt=" << rtt << ", min_rtt=" << min_rtt << ", delta=" << delta << endl;
   // Set intersend time and perform boundary checks.
   _the_window = max(2.0, _the_window);
   cur_intersend_time = 0.5 * rtt / _the_window;
@@ -244,7 +244,7 @@ void MarkovianCC::onACK(int ack,
   }
   if (pkt_lost) {
     update_delta(true);
-    cout << "LOST! --------------------" << endl;
+    //cout << "LOST! --------------------" << endl;
   }
 
   ++ num_pkts_acked;
