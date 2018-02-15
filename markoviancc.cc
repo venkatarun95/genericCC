@@ -98,7 +98,7 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
   if (operation_mode == DEFAULT_MODE) {
     if (prev_delta_update_time == 0. || prev_delta_update_time_loss + cur_rtt < cur_time) {
       if (delta < default_delta)
-        delta = 1. / (1. / delta - 1.);
+        delta = default_delta; //1. / (1. / delta - 1.);
       delta = min(delta, default_delta);
       prev_delta_update_time = cur_time;
     }
@@ -108,6 +108,11 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       delta = default_delta;
     if (pkt_lost && prev_delta_update_time_loss + cur_rtt < cur_time) {
       delta *= 2;
+      // double decrease = 0.3 * _the_window * rtt_window.get_min_rtt() / (rtt_window.get_unjittered_rtt());
+      // if (decrease >= 1. / (1.428 * delta))
+      // 	delta = default_delta;
+      // else
+      // 	delta = 1. / (1. / (1.428 * delta) - decrease);
       prev_delta_update_time_loss = cur_time;
     }
     else {
