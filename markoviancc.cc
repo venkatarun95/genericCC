@@ -180,6 +180,7 @@ void MarkovianCC::update_intersend_time() {
       pkts_per_rtt = update_dir = 0;
     }
     update_amt = min(update_amt, (int)(_the_window * delta));
+    update_amt = max(update_amt, 1);
     ++ pkts_per_rtt;
 
     if (_the_window < target_window) {
@@ -192,7 +193,7 @@ void MarkovianCC::update_intersend_time() {
     }
   }
 
-  //cout << "window=" << _the_window << ", rtt=" << rtt << ", min_rtt=" << min_rtt << ", delta=" << delta << endl;
+  //cout << "window=" << _the_window << ", target=" << target_window << ", rtt=" << rtt << ", min_rtt=" << min_rtt << ", delta=" << delta << endl;
   // Set intersend time and perform boundary checks.
   _the_window = max(2.0, _the_window);
   cur_intersend_time = 0.5 * rtt / _the_window;
