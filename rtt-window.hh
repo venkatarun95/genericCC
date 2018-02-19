@@ -32,6 +32,7 @@ class RTTWindow {
   double srtt;
   const double srtt_alpha;
 
+  double latest_rtt;
   ExtremeWindow min_rtt;
   ExtremeWindow unjittered_rtt;
   ExtremeWindow is_copa_min;
@@ -44,5 +45,6 @@ class RTTWindow {
 
   double get_min_rtt() const;
   double get_unjittered_rtt() const;
+  double get_latest_rtt() const;
   bool is_copa() const;
 };

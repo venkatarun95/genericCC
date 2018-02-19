@@ -60,6 +60,7 @@ void ExtremeWindow::new_sample(double val, double now) {
 RTTWindow::RTTWindow()
   : srtt(0.),
     srtt_alpha(1. / 16.),
+    latest_rtt(0.),
     min_rtt(true),
     unjittered_rtt(true),
     is_copa_min(true),
@@ -79,6 +80,7 @@ void RTTWindow::new_rtt_sample(double rtt, double now) {
   if (srtt == 0.)
     srtt = rtt;
   srtt = srtt_alpha * rtt + (1. - srtt_alpha) * srtt;
+  latest_rtt = rtt;
 
   // Update extreme value trackers
   min_rtt.update_max_time(10e3);
@@ -98,6 +100,10 @@ double RTTWindow::get_min_rtt() const {
 
 double RTTWindow::get_unjittered_rtt() const {
   return unjittered_rtt;
+}
+
+double RTTWindow::get_latest_rtt() const {
+  return latest_rtt;
 }
 
 bool RTTWindow::is_copa() const {

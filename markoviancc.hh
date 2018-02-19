@@ -57,7 +57,7 @@ class MarkovianCC : public CCC {
   int update_dir;
   int prev_update_dir;
   int pkts_per_rtt;
-  int update_amt;
+  double update_amt;
   
   Time intersend_time_vel;
   Time prev_intersend_time_vel;

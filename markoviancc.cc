@@ -95,7 +95,7 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
     }
   }
 
-  if (operation_mode == DEFAULT_MODE) {
+  if (operation_mode == DEFAULT_MODE && utility_mode != TCP_COOP) {
     if (prev_delta_update_time == 0. || prev_delta_update_time_loss + cur_rtt < cur_time) {
       if (delta < default_delta)
         delta = default_delta; //1. / (1. / delta - 1.);
@@ -108,11 +108,11 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       delta = default_delta;
     if (pkt_lost && prev_delta_update_time_loss + cur_rtt < cur_time) {
       delta *= 2;
-      // double decrease = 0.3 * _the_window * rtt_window.get_min_rtt() / (rtt_window.get_unjittered_rtt());
-      // if (decrease >= 1. / (1.428 * delta))
+      // double decrease = 0.5 * _the_window * rtt_window.get_min_rtt() / (rtt_window.get_unjittered_rtt());
+      // if (decrease >= 1. / (2. * delta))
       // 	delta = default_delta;
       // else
-      // 	delta = 1. / (1. / (1.428 * delta) - decrease);
+      // 	delta = 1. / (1. / (2. * delta) - decrease);
       prev_delta_update_time_loss = cur_time;
     }
     else {
@@ -170,22 +170,21 @@ void MarkovianCC::update_intersend_time() {
   }
   // Update the window
   else {
-    if (last_update_time + rtt < cur_time) {
-      if (abs(update_dir) > 2 * pkts_per_rtt / 3) {
-        if (prev_update_dir * update_dir > 0)
-          update_amt *= 2;
-        else {
-          update_amt = 1;
-          prev_update_dir *= -1;
-        }
+    if (last_update_time + rtt_window.get_latest_rtt() < cur_time) {
+      if (prev_update_dir * update_dir > 0) {
+        update_amt = (int)update_amt * 2;
       }
-      else
-        update_amt = 1;
+      else {
+        update_amt = 1.;
+        prev_update_dir *= -1;
+      }
       last_update_time = cur_time;
       pkts_per_rtt = update_dir = 0;
     }
-    update_amt = min(update_amt, (int)(_the_window * delta));
-    update_amt = max(update_amt, 1);
+    if (update_amt > _the_window * delta) {
+      update_amt /= 2;
+    }
+    update_amt = max(update_amt, 1.);
     ++ pkts_per_rtt;
 
     if (_the_window < target_window) {
@@ -198,7 +197,7 @@ void MarkovianCC::update_intersend_time() {
     }
   }
 
-  //cout << "window=" << _the_window << ", target=" << target_window << ", rtt=" << rtt << ", min_rtt=" << min_rtt << ", delta=" << delta << endl;
+  cout << "time= " << cur_time << " window= " << _the_window << " target= " << target_window << " rtt= " << rtt << " min_rtt= " << min_rtt << " delta= " << delta << " update_amt= " << update_amt << endl;
   // Set intersend time and perform boundary checks.
   _the_window = max(2.0, _the_window);
   cur_intersend_time = 0.5 * rtt / _the_window;
