@@ -8,7 +8,7 @@ LIBS     := -ljemalloc -lm -pthread -lprotobuf -lpthread -ljemalloc
 #$(MEMORY_STYLE)/libremyprotos.a
 OBJECTS  := random.o memory.o memoryrange.o rat.o whisker.o whiskertree.o udp-socket.o traffic-generator.o remycc.o markoviancc.o estimators.o rtt-window.o #protobufs-default/dna.pb.o
 
-all: sender receiver prober pygenericcc.so
+all: sender receiver pygenericcc.so
 
 .PHONY: all
 

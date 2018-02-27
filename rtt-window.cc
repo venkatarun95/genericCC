@@ -83,10 +83,11 @@ void RTTWindow::new_rtt_sample(double rtt, double now) {
   latest_rtt = rtt;
 
   // Update extreme value trackers
-  min_rtt.update_max_time(10e3);
-  unjittered_rtt.update_max_time(min(10e3, srtt * 0.5));
-  is_copa_min.update_max_time(min(10e3, srtt * 4));
-  is_copa_max.update_max_time(min(10e3, srtt * 4));
+  double max_time = max(10e3, 20. * min_rtt);
+  min_rtt.update_max_time(max_time);
+  unjittered_rtt.update_max_time(min(max_time, srtt * 0.5));
+  is_copa_min.update_max_time(min(max_time, srtt * 4));
+  is_copa_max.update_max_time(min(max_time, srtt * 4));
 
   min_rtt.new_sample(rtt, now);
   unjittered_rtt.new_sample(rtt, now);
