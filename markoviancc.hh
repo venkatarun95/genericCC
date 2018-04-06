@@ -89,6 +89,7 @@ class MarkovianCC : public CCC {
   double max_queuing_delay_estimate;
   // To cooperate with TCP, measured in fraction of RTTs with loss
   LossRateEstimate loss_rate;
+  ReduceOnLoss reduce_on_loss;
   bool loss_in_last_rtt;
   // Behavior constant
   double behavior;
@@ -152,6 +153,7 @@ public:
       prev_delta_update_time_loss(),
       max_queuing_delay_estimate(),
       loss_rate(),
+      reduce_on_loss(),
       loss_in_last_rtt(),
       behavior(),
       interarrival_ewma(1.0 / 32.0),

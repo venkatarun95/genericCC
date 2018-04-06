@@ -67,6 +67,7 @@ void MarkovianCC::init() {
   max_queuing_delay_estimate = 0;
 
   loss_rate.reset();
+  reduce_on_loss.reset();
   loss_in_last_rtt = false;
   interarrival_ewma.reset();
   prev_ack_time = 0.0;
@@ -230,22 +231,23 @@ void MarkovianCC::onACK(int ack,
   update_intersend_time();
 
   bool pkt_lost = false;
-  if (unacknowledged_packets.count(seq_num) != 0 &&
-      unacknowledged_packets[seq_num].sent_time == sent_time) {
+  bool reduce = false;
+  if (unacknowledged_packets.count(seq_num) != 0) {
     int tmp_seq_num = -1;
     for (auto x : unacknowledged_packets) {
       assert(tmp_seq_num <= x.first);
       tmp_seq_num = x.first;
       if (x.first > seq_num)
-	break;
+        break;
       prev_intersend_time = x.second.intersend_time;
       prev_intersend_time_vel = x.second.intersend_time_vel;
       prev_rtt = x.second.rtt;
       prev_rtt_update_time = x.second.sent_time;
       prev_avg_sending_rate = x.second.prev_avg_sending_rate;
       if (x.first < seq_num) {
-	++ num_pkts_lost;
-	pkt_lost = true;
+        ++ num_pkts_lost;
+        pkt_lost = true;
+        reduce |= reduce_on_loss.update(true, cur_time, rtt_window.get_latest_rtt());
       }
       unacknowledged_packets.erase(x.first);
     }
@@ -253,6 +255,13 @@ void MarkovianCC::onACK(int ack,
   if (pkt_lost) {
     update_delta(true);
     //cout << "LOST! --------------------" << endl;
+  }
+  reduce |= reduce_on_loss.update(false, cur_time, rtt_window.get_latest_rtt());
+  if (reduce) {
+    _the_window *= 0.7;
+    _the_window = max(2.0, _the_window);
+    cur_intersend_time = 0.5 * rtt_window.get_unjittered_rtt() / _the_window;
+    _intersend_time = randomize_intersend(cur_intersend_time);
   }
 
   ++ num_pkts_acked;

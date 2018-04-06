@@ -112,6 +112,29 @@ double LossRateEstimate::value() {
   return sum_weight / sum;
 }
 
+bool ReduceOnLoss::update(bool loss, double cur_time, double rtt) {
+  if (loss)
+    ++ num_lost;
+  ++ num_pkts;
+
+  if (cur_time > prev_win_time + 2 * rtt && num_pkts > 20) {
+    double loss_rate = 1.0 * num_lost / num_pkts;
+    //cout << "Losses: " << num_lost << " " << num_pkts << endl;
+    prev_win_time = cur_time;
+    num_lost = 0;
+    num_pkts = 0;
+    if (loss_rate > 0.3)
+      return true;
+  }
+  return false;
+}
+
+void ReduceOnLoss::reset() {
+  num_lost = 0;
+  num_pkts = 0;
+  prev_win_time = 0.;
+}
+
 /*************************** TIME WINDOW ******************************/
 
 TimeWindow::TimeWindow(double window_size) :
