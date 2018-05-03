@@ -21,7 +21,7 @@ Installation
 Dependencies: Makepp, Google protocol buffers, Boost C+ library and
 jemalloc. On Ubuntu install using
 
-`sudo apt-get install makepp libboost-dev libprotobuf-dev protobuf-compiler libjemalloc-dev iperf`
+`sudo apt-get install g++ makepp libboost-dev libprotobuf-dev protobuf-compiler libjemalloc-dev iperf libboost-python-dev`
 
 Run: `makepp` in the base directory. It should create 'sender' and
 'receiver' executables in the home directory. Uses the makepp build

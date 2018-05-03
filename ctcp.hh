@@ -127,7 +127,7 @@ void CTCP<T>::tcp_handshake() {
   bool multi_send = false;
   while ( true ) {
     double cur_time = current_timestamp(start_time_point);
-    if (last_send_time < cur_time - 2000) {
+    if (last_send_time < cur_time - 200) {
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, sizeof(TCPHeader) * 2, NULL );
 
@@ -135,7 +135,7 @@ void CTCP<T>::tcp_handshake() {
         multi_send = true;
       last_send_time = cur_time;
     }
-    if (socket.receivedata( buf, packet_size, 2000, other_addr ) == 0) {
+    if (socket.receivedata( buf, packet_size, 200, other_addr ) == 0) {
       cerr << "Could not establish connection" << endl;
       continue;
     }
@@ -170,8 +170,6 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
     link_logfile.open( LINK_LOGGING_FILENAME, ios::out | ios::app );
 
   // for flow control
-  _last_send_time = 0.0;
-  double cur_time = 0;
   int seq_num = 0;
   _largest_ack = -1;
 
@@ -187,18 +185,17 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
   cout << "Assuming training link rate of: " << TRAINING_LINK_RATE << " pkts/sec" << endl;
 
   // Get min_rtt from outside
-  const char* min_rtt_c = getenv("MIN_RTT");
-  if (min_rtt_c == 0)
-    congctrl.set_min_rtt(1e9);
-  else
-    congctrl.set_min_rtt(atof(min_rtt_c));
+  // const char* min_rtt_c = getenv("MIN_RTT");
+  // if (min_rtt_c != 0)
+  //   congctrl.set_min_rtt(atof(min_rtt_c));
+
+  // For computing timeouts
+  tcp_handshake();
 
   chrono::high_resolution_clock::time_point start_time_point = chrono::high_resolution_clock::now();
-  cur_time = current_timestamp( start_time_point );
+  double cur_time = current_timestamp( start_time_point );
   _last_send_time = cur_time;
-  // For computing timeouts
   double last_ack_time = cur_time;
-  tcp_handshake();
 
   cur_time = current_timestamp( start_time_point );
   congctrl.set_timestamp(cur_time);
@@ -225,7 +222,6 @@ void CTCP<T>::send_data( double flow_size, bool byte_switched, int flow_id, int 
       header.src_id = src_id;
       header.sender_timestamp = cur_time;
       header.receiver_timestamp = 0;
-
       memcpy( buf, &header, sizeof(TCPHeader) );
       socket.senddata( buf, packet_size, NULL );
       _last_send_time += congctrl.get_intersend_time();

@@ -182,6 +182,24 @@ public:
 
 };
 
+// Returns true once per RTT if loss rate for that RTT is greater than 10%
+class ReduceOnLoss {
+  int num_lost;
+  int num_pkts;
+  double prev_win_time;
+
+public:
+  ReduceOnLoss()
+    : num_lost(0),
+      num_pkts(0),
+      prev_win_time(0.0)
+  {}
+
+  // Returns whether to reduce or not
+  bool update(bool loss, double cur_time, double rtt);
+  void reset();
+};
+
 // Maintains data-points in a given time window and provides
 // statistics on that.
 class TimeWindow {

@@ -39,10 +39,8 @@ void MarkovianCC::init() {
   
   unacknowledged_packets.clear();
 
-  rtt_acked.reset();
   rtt_unacked.reset();
-  rtt_window.reset();
-  rtt_window.update_window_size(0);
+  rtt_window.clear();
   prev_intersend_time = 0;
   cur_intersend_time = 0;
   interarrival.reset();
@@ -67,28 +65,26 @@ void MarkovianCC::init() {
   prev_delta_update_time = 0;
   prev_delta_update_time_loss = 0;
   max_queuing_delay_estimate = 0;
-  max_rtt = 0;
 
   loss_rate.reset();
+  reduce_on_loss.reset();
   loss_in_last_rtt = false;
-  rtt_long_avg.reset();
   interarrival_ewma.reset();
   prev_ack_time = 0.0;
   exp_increment = 1.0;
   prev_delta.reset();
   slow_start = true;
   slow_start_threshold = 1e10;
-  rtt_var.reset();
 }
 
-void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_rtt __attribute((unused))) {
+void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_rtt) {
   double cur_time = current_timestamp();
   if (utility_mode == AUTO_MODE) {
     if (pkt_lost) {
-      is_uniform.update(rtt_acked);
-      cout << "Packet lost: " << cur_time << endl;
+      is_uniform.update(rtt_window.get_unjittered_rtt());
+      //cout << "Packet lost: " << cur_time << endl;
     }
-    if (!rtt_window.is_copa(rtt_acked, cur_time)) {
+    if (!rtt_window.is_copa()) {
       if (operation_mode == DEFAULT_MODE)
         cout << "Switched to loss sensitive mode." << endl;
       operation_mode = LOSS_SENSITIVE_MODE;
@@ -97,31 +93,37 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       if (operation_mode == LOSS_SENSITIVE_MODE)
         cout << "Switched to default mode." << endl;
       operation_mode = DEFAULT_MODE;
-      delta = default_delta;
     }
   }
-  
-  if (utility_mode == TCP_COOP || operation_mode == LOSS_SENSITIVE_MODE) {
+
+  if (operation_mode == DEFAULT_MODE && utility_mode != TCP_COOP) {
+    if (prev_delta_update_time == 0. || prev_delta_update_time_loss + cur_rtt < cur_time) {
+      if (delta < default_delta)
+        delta = default_delta; //1. / (1. / delta - 1.);
+      delta = min(delta, default_delta);
+      prev_delta_update_time = cur_time;
+    }
+  }
+  else if (utility_mode == TCP_COOP || operation_mode == LOSS_SENSITIVE_MODE) {
     if (prev_delta_update_time == 0)
-      delta = 1;
-    if (pkt_lost && cur_intersend_time != 0 && prev_delta_update_time_loss + cur_rtt < cur_time) {
-      cout << delta << " " << cur_intersend_time << endl;
-      double median_rtt = 1 / (delta * cur_intersend_time);
-      if (true || cur_rtt > median_rtt) // congestive loss
-        delta *= 2;
-      else
-        delta /= 2;
+      delta = default_delta;
+    if (pkt_lost && prev_delta_update_time_loss + cur_rtt < cur_time) {
+      delta *= 2;
+      // double decrease = 0.5 * _the_window * rtt_window.get_min_rtt() / (rtt_window.get_unjittered_rtt());
+      // if (decrease >= 1. / (2. * delta))
+      // 	delta = default_delta;
+      // else
+      // 	delta = 1. / (1. / (2. * delta) - decrease);
       prev_delta_update_time_loss = cur_time;
     }
     else {
       if (prev_delta_update_time + cur_rtt < cur_time) {
-	delta = 1 / (1 + 1 / delta);
-	prev_delta_update_time = cur_time;
+        delta = 1. / (1. / delta + 1.);
+        //cout << "DU " << cur_time << " " << flow_id << " " << delta << endl;
+        prev_delta_update_time = cur_time;
       }
     }
-    cout << "DU " << cur_time << " " << flow_id << " " << delta << endl;
-    //delta = min(delta, 1.0);
-    //delta = max(delta, 0.1);
+    delta = min(delta, default_delta);
   }
 }
 
@@ -134,23 +136,24 @@ double MarkovianCC::randomize_intersend(double intersend) {
 
 void MarkovianCC::update_intersend_time() {
   double cur_time __attribute((unused)) = current_timestamp();
-  if (external_min_rtt == 0) {
-    cout << "External min. RTT estimate required." << endl;
-    exit(1);
-  }
+  // if (external_min_rtt == 0) {
+  //   cout << "External min. RTT estimate required." << endl;
+  //   exit(1);
+  // }
   
   // First two RTTs are for probing
   if (num_pkts_acked < 2 * num_probe_pkts - 1)
     return;
 
   // Calculate useful quantities
-  double rtt_ewma = rtt_acked;
-  double queuing_delay = rtt_ewma - min_rtt;
+  double rtt = rtt_window.get_unjittered_rtt();
+  double queuing_delay = rtt - min_rtt;
+
   double target_window;
   if (queuing_delay == 0)
     target_window = numeric_limits<double>::max();
   else
-    target_window = rtt_ewma / (queuing_delay * delta);
+    target_window = rtt / (queuing_delay * delta);
 
   // Handle start-up behavior
   if (slow_start) {
@@ -160,29 +163,32 @@ void MarkovianCC::update_intersend_time() {
         slow_start = false;
     }
     else {
-      //_the_window = target_window * delta;
-      _the_window = rtt_ewma / ((min_rtt + rtt_window.get_max()) * 0.5 - min_rtt);
-      cout << "Fast Start: " << rtt_window.get_min() << " " << rtt_window.get_max() << " " << _the_window << endl;
-      slow_start = false;
+      assert(false);
+      // _the_window = rtt / ((min_rtt + rtt_window.get_max()) * 0.5 - min_rtt);
+      // cout << "Fast Start: " << rtt_window.get_min() << " " << rtt_window.get_max() << " " << _the_window << endl;
+      // slow_start = false;
     }
   }
   // Update the window
   else {
-    if (last_update_time + rtt_ewma < cur_time) {
-      if (abs(update_dir) > 2 * pkts_per_rtt / 3) {
-        if (prev_update_dir * update_dir > 0)
-          update_amt *= 2;
-        else {
-          update_amt = 1;
-          prev_update_dir *= -1;
-        }
+    if (last_update_time + rtt_window.get_latest_rtt() < cur_time) {
+      if (prev_update_dir * update_dir > 0) {
+        if (update_amt < 0.006)
+          update_amt += 0.005;
+        else
+          update_amt = (int)update_amt * 2;
       }
-      else
-        update_amt = 1;
+      else {
+        update_amt = 1.;
+        prev_update_dir *= -1;
+      }
       last_update_time = cur_time;
       pkts_per_rtt = update_dir = 0;
     }
-    update_amt = min(update_amt, (int)_the_window);
+    if (update_amt > _the_window * delta) {
+      update_amt /= 2;
+    }
+    update_amt = max(update_amt, 1.);
     ++ pkts_per_rtt;
 
     if (_the_window < target_window) {
@@ -195,9 +201,10 @@ void MarkovianCC::update_intersend_time() {
     }
   }
 
+  //cout << "time= " << cur_time << " window= " << _the_window << " target= " << target_window << " rtt= " << rtt << " min_rtt= " << min_rtt << " delta= " << delta << " update_amt= " << update_amt << endl;
   // Set intersend time and perform boundary checks.
   _the_window = max(2.0, _the_window);
-  cur_intersend_time = rtt_ewma / _the_window;
+  cur_intersend_time = 0.5 * rtt / _the_window;
   _intersend_time = randomize_intersend(cur_intersend_time);
 }
 
@@ -208,19 +215,11 @@ void MarkovianCC::onACK(int ack,
   double cur_time = current_timestamp();
   assert(cur_time > sent_time);
 
-  if (rtt_acked == 0 || num_pkts_acked < num_probe_pkts - 1)
-    rtt_acked.force_set(cur_time - sent_time, cur_time / min_rtt);
-  rtt_acked.update(cur_time - sent_time, cur_time / min_rtt);
-  min_rtt = min(min_rtt, cur_time - sent_time);
-  rtt_window.update_window_size(10000.0);
-  rtt_window.update(cur_time - sent_time, cur_time);
-  assert(rtt_acked >= min_rtt);
+  rtt_window.new_rtt_sample(cur_time - sent_time, cur_time);
+  min_rtt = rtt_window.get_min_rtt(); //min(min_rtt, cur_time - sent_time);
+  assert(rtt_window.get_unjittered_rtt() >= min_rtt);
 
-  if (rtt_long_avg == 0 || num_pkts_acked < num_probe_pkts - 1)
-    rtt_long_avg.force_set(cur_time - sent_time, cur_time / min_rtt);
-  rtt_long_avg.update(cur_time - sent_time, cur_time / min_rtt);  
   // loss_rate = loss_rate * (1.0 - alpha_loss);
-  rtt_var.update(abs(rtt_long_avg - cur_time + sent_time), cur_time / min_rtt);
 
   if (prev_ack_time != 0) {
     interarrival_ewma.update(cur_time - prev_ack_time, cur_time / min_rtt);
@@ -232,29 +231,37 @@ void MarkovianCC::onACK(int ack,
   update_intersend_time();
 
   bool pkt_lost = false;
-  if (unacknowledged_packets.count(seq_num) != 0 &&
-      unacknowledged_packets[seq_num].sent_time == sent_time) {
+  bool reduce = false;
+  if (unacknowledged_packets.count(seq_num) != 0) {
     int tmp_seq_num = -1;
-    for (auto x : unacknowledged_packets) {		
+    for (auto x : unacknowledged_packets) {
       assert(tmp_seq_num <= x.first);
       tmp_seq_num = x.first;
       if (x.first > seq_num)
-	break;
+        break;
       prev_intersend_time = x.second.intersend_time;
       prev_intersend_time_vel = x.second.intersend_time_vel;
       prev_rtt = x.second.rtt;
       prev_rtt_update_time = x.second.sent_time;
       prev_avg_sending_rate = x.second.prev_avg_sending_rate;
       if (x.first < seq_num) {
-	++ num_pkts_lost;
-	pkt_lost = true;
+        ++ num_pkts_lost;
+        pkt_lost = true;
+        reduce |= reduce_on_loss.update(true, cur_time, rtt_window.get_latest_rtt());
       }
       unacknowledged_packets.erase(x.first);
     }
   }
   if (pkt_lost) {
-    cout << "Seq Num Loss Detect " << rtt_acked << endl;
     update_delta(true);
+    //cout << "LOST! --------------------" << endl;
+  }
+  reduce |= reduce_on_loss.update(false, cur_time, rtt_window.get_latest_rtt());
+  if (reduce) {
+    _the_window *= 0.7;
+    _the_window = max(2.0, _the_window);
+    cur_intersend_time = 0.5 * rtt_window.get_unjittered_rtt() / _the_window;
+    _intersend_time = randomize_intersend(cur_intersend_time);
   }
 
   ++ num_pkts_acked;
@@ -268,11 +275,11 @@ void MarkovianCC::onPktSent(int seq_num) {
   unacknowledged_packets[seq_num] = {cur_time,
                                      cur_intersend_time,
                                      intersend_time_vel,
-                                     rtt_acked,
+                                     rtt_window.get_unjittered_rtt(),
                                      unacknowledged_packets.size() / (cur_time - prev_rtt_update_time)
   };
 
-  rtt_unacked.force_set(rtt_acked, cur_time / min_rtt);
+  rtt_unacked.force_set(rtt_window.get_unjittered_rtt(), cur_time / min_rtt);
   for (auto & x : unacknowledged_packets) {
     if (cur_time - x.second.sent_time > rtt_unacked) {
       rtt_unacked.update(cur_time - x.second.sent_time, cur_time / min_rtt);
@@ -294,7 +301,6 @@ void MarkovianCC::close() {
 void MarkovianCC::onDupACK() {
   ///num_pkts_lost ++;
   // loss_rate = 1.0 * alpha_loss + loss_rate * (1.0 - alpha_loss);
-  //cout << "Dupack " << rtt_acked << endl;
   //slow_start = false;
   //update_delta(true);
 }

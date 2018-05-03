@@ -10,6 +10,7 @@
 #include "random.hh"
 #endif
 #include "estimators.hh"
+#include "rtt-window.hh"
 
 #include <chrono>
 #include <functional>
@@ -45,9 +46,8 @@ class MarkovianCC : public CCC {
   Time min_rtt;
   // If min rtt is supplied externally, preserve across flows.
   double external_min_rtt;
-  PlainEwma rtt_acked;
   PlainEwma rtt_unacked;
-  TimeWindow rtt_window;
+  RTTWindow rtt_window;
   Time prev_intersend_time;
   Time cur_intersend_time;
   Percentile interarrival;
@@ -57,7 +57,7 @@ class MarkovianCC : public CCC {
   int update_dir;
   int prev_update_dir;
   int pkts_per_rtt;
-  int update_amt;
+  double update_amt;
   
   Time intersend_time_vel;
   Time prev_intersend_time_vel;
@@ -87,11 +87,10 @@ class MarkovianCC : public CCC {
   double prev_delta_update_time;
   double prev_delta_update_time_loss;
   double max_queuing_delay_estimate;
-  double max_rtt;
   // To cooperate with TCP, measured in fraction of RTTs with loss
   LossRateEstimate loss_rate;
+  ReduceOnLoss reduce_on_loss;
   bool loss_in_last_rtt;
-  TimeEwma rtt_long_avg;
   // Behavior constant
   double behavior;
   PlainEwma interarrival_ewma;
@@ -100,7 +99,6 @@ class MarkovianCC : public CCC {
   PlainEwma prev_delta;
   bool slow_start;
   double slow_start_threshold;
-  TimeEwma rtt_var;
   
   // Find flow id
   static int flow_id_counter;
@@ -124,9 +122,8 @@ public:
       unacknowledged_packets(),
       min_rtt(),
       external_min_rtt(false),
-      rtt_acked(alpha_rtt),
       rtt_unacked(alpha_rtt),
-      rtt_window(0),
+      rtt_window(),
       prev_intersend_time(),
       cur_intersend_time(),
       interarrival(0.05),
@@ -155,10 +152,9 @@ public:
       prev_delta_update_time(),
       prev_delta_update_time_loss(),
       max_queuing_delay_estimate(),
-      max_rtt(),
       loss_rate(),
+      reduce_on_loss(),
       loss_in_last_rtt(),
-      rtt_long_avg(alpha_rtt_long_avg),
       behavior(),
       interarrival_ewma(1.0 / 32.0),
       prev_ack_time(),
@@ -166,7 +162,6 @@ public:
       prev_delta(1.0),
       slow_start(),
       slow_start_threshold(),
-      rtt_var(alpha_rtt_long_avg),
       flow_id(++ flow_id_counter),
       cur_tick()
   {}
@@ -197,6 +192,7 @@ public:
     std::cout << "Set min. RTT to " << external_min_rtt << std::endl;
   }
   int get_delta_class() const {return 0;}
+  double get_the_window() {return _the_window;}
   void set_delta_from_router(double x) {
     if (utility_mode == BOUNDED_DELAY) {
       if (delta != x)
