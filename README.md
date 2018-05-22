@@ -147,16 +147,18 @@ delay as follows (assuming you have the relevant trace file, for
 `mm-delay 50 mm-link trace-12Mbps trace-12Mbps`
 
 Find the ip addresses inside and outside the mahimahi shell by running
-`ifconfig` inside and outside the shell resp. Inside the shell look
-for an 'ingress' interface and outside the shell, look for a 'delay-*'
-interface. For instance they could be '100.64.0.1' and '100.64.0.4'
-resp. Run `./receiver` outside the mahimahi shells. Run the following
-command inside the shells to start a sender that uses Adaptive Copa
-that bounds end-to-end delay to 110ms. It will transmit in 10s bunches. You can run several such sender processes in parallel, but
-running more than n-1 senders (where n is the number of available
-cores) is not recommended, especially for protocols that could be
-potentially pacing sensitive such as Remy.
+`ifconfig` inside and outside the shell resp. Inside the shell look for an
+'ingress' interface and outside the shell, look for a 'delay-*' interface. For
+instance they could be '100.64.0.1' and '100.64.0.4' resp. The external address
+is also available in the variable `MAHIMAHI_BASE`. Run `./receiver` outside the
+mahimahi shells. Run the following command inside the shells to start a sender
+that uses Adaptive Copa that bounds end-to-end delay to 110ms. It will transmit
+in 10s bunches. You can run several such sender processes in parallel, but
+running more than n-1 senders (where n is the number of available cores) is not
+recommended, especially for protocols that could be potentially pacing sensitive
+such as Remy.
 
-`export MIN_RTT=10000`
+`./sender serverip=$MAHIMAHI_BASE offduration=0 onduration=60000
+cctype=markovian delta_conf=do_ss:auto:0.5
+traffic_params=deterministic,num_cycles=1`
 
-`./sender serverip=100.64.0.1 sourceip=100.64.0.4 cctype=markovian delta_conf=bounded_delay_end:110 onduration=10000 offduration=100 traffic_params=deterministic`

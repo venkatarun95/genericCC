@@ -85,13 +85,9 @@ void MarkovianCC::update_delta(bool pkt_lost __attribute((unused)), double cur_r
       //cout << "Packet lost: " << cur_time << endl;
     }
     if (!rtt_window.is_copa()) {
-      if (operation_mode == DEFAULT_MODE)
-        cout << "Switched to loss sensitive mode." << endl;
       operation_mode = LOSS_SENSITIVE_MODE;
     }
     else {
-      if (operation_mode == LOSS_SENSITIVE_MODE)
-        cout << "Switched to default mode." << endl;
       operation_mode = DEFAULT_MODE;
     }
   }
