@@ -15,7 +15,7 @@
 
 using namespace std;
 
-#define packet_size 1500
+#define packet_size 1440
 #define data_size (packet_size-sizeof(TCPHeader))
 
 template <class T>
