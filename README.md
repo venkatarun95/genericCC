@@ -13,7 +13,7 @@ specified in seconds or bytes.
 Note: transport for Copa, Remy and AIMD is not reliable whereas Kernel
 TCP (run using iperf) is reliable. None of these are capable of
 transporting data yet, though such a version is in development in the
-'full_tcp' branch.
+'full\_tcp' branch.
 
 Installation
 ------------
@@ -27,6 +27,8 @@ Run: `makepp` in the base directory. It should create 'sender' and
 'receiver' executables in the home directory. Uses the makepp build
 system (short for "make plus plus"). 'iperf' is required for running
 kernel TCP.
+
+If you want to build in Ubuntu 12.04 or older, you may have to update g++ and boost. See [issue 4](https://github.com/venkatarun95/genericCC/issues/4).
 
 Usage
 -----------
