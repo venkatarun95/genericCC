@@ -30,6 +30,8 @@ kernel TCP.
 
 If you want to build in Ubuntu 12.04 or older, you may have to update g++ and boost. See [issue 4](https://github.com/venkatarun95/genericCC/issues/4).
 
+To build python bindings to the CC algorithms, use `makepp python_bindings`
+
 Usage
 -----------
 
@@ -50,7 +52,7 @@ used by default. If Remy is used, the rat file should be specified
 using 'if=filepath'. The delta configuration for markovian can be
 specified using 'delta_conf'. For instance
 'delta_conf=constant_delta:1' will make Copa use a constant delta of
-1.0. 
+1.0.
 
 Various variants of Adaptive Copa can be specified. For instance
 'bounded_delay_end:100 will bound the end-to-end delay to
@@ -163,4 +165,3 @@ such as Remy.
 `./sender serverip=$MAHIMAHI_BASE offduration=0 onduration=60000
 cctype=markovian delta_conf=do_ss:auto:0.5
 traffic_params=deterministic,num_cycles=1`
-
