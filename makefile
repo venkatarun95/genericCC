@@ -12,7 +12,7 @@ all: sender receiver
 
 python_bindings: pygenericcc.so
 
-.PHONY: all
+.PHONY: all python_bindings
 
 protobufs-default/dna.pb.cc: protobufs-default/dna.proto
 	protoc --cpp_out=. protobufs-default/dna.proto
