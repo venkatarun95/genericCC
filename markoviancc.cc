@@ -230,7 +230,9 @@ void MarkovianCC::onACK(int ack,
   bool reduce = false;
   if (unacknowledged_packets.count(seq_num) != 0) {
     int tmp_seq_num = -1;
-    for (auto x : unacknowledged_packets) {
+    auto iter = unacknowledged_packets.begin();
+    while (iter != unacknowledged_packets.end()){
+      auto x = *iter;
       assert(tmp_seq_num <= x.first);
       tmp_seq_num = x.first;
       if (x.first > seq_num)
@@ -245,7 +247,7 @@ void MarkovianCC::onACK(int ack,
         pkt_lost = true;
         reduce |= reduce_on_loss.update(true, cur_time, rtt_window.get_latest_rtt());
       }
-      unacknowledged_packets.erase(x.first);
+      iter = unacknowledged_packets.erase(iter);
     }
   }
   if (pkt_lost) {
